@@ -135,21 +135,21 @@
 
         if ( _vmAndHostAndDatastoreInfo.length === _vmInfo.length ) {
             var str = JSON.stringify ( _vmAndHostInfo );
-            // jQuery ( '#chartContainer' ).text ( str );
+            jQuery ( '#chartContainer' ).text ( str );
         }
 
-        turnInfoCSV ( );
+        // turnIntoCSV ( );
     }
 
-    function turnInfoCSV ( )
+    function turnIntoCSV ( )
     {
         var i, str, obj;
 
-        str = 'vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex\\n';
+        str = '<div>vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex</div>';
 
         for ( i = 0; i < _vmAndHostAndDatastoreInfo.length; i += 1 ) {
             obj = _vmAndHostAndDatastoreInfo [ i ];
-            str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' + obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex + '\\n';
+            str = str + '<div>' + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' + obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex + '</div>';
         }
 
         jQuery ( '#chartContainer').html ( str );
