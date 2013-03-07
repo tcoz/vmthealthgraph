@@ -244,9 +244,17 @@
                 }
             }
 
+            var radius = 1;
+            for ( j = 0; j < powVals.length; j++ ) {
+
+                if ( vmPI >= powVals [ j ] && vmPI < powVals [ j + 1 ] ) {
+                    radius = j * 2;
+                    j = powVals.length;
+                }
+            }
+
             var xPoint = computePoint ( xAxisPoints, hostPI, axisLength );
             var yPoint = computePoint ( yAxisPoints, dsPI, axisLength );
-            var radius = ( 1 * vmPI <= 10 ? 1 * vmPI : 10 );
 
             chart_layer2_context.fillStyle = '#0000FF';
             chart_layer2_context.beginPath();
