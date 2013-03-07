@@ -28,25 +28,34 @@
     var _applianceAddress = 'http://localhost:8400/vmturbo/api/';
     var _virtualMachinesUrl = _applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex';
 
+
+
     // When the document loads, this will run.
     jQuery ( document ).ready ( function ( ) {
+        setTimeout ( refreshWindow, 30000 );
         drawBaseChart ( );
         startApp ( );
     } );
 
-    var originPoint;
-    var chart_layer1, chart_layer1_context;
-    var powVals = [ ];
-    var axisLength = 500;
+    function refreshWindow ( ) {
+        window.location.reload ( true );
+    }
+
+    var originPoint,
+        chart_layer1, chart_layer1_context,
+        chart_layer2, chart_layer2_context,
+        powVals = [ ],
+        axisLength = 500;
 
     function drawBaseChart ( )
     {
-        console.log ( 'DRAWING BASE CHART' );
-
         var i, j, xPoint, yPoint;
 
         chart_layer1 = jQuery ( '#chart_layer1' ).get ( 0 );
         chart_layer1_context = chart_layer1.getContext ( '2d');
+        chart_layer2 = jQuery ( '#chart_layer2' ).get ( 0 );
+        chart_layer2_context = chart_layer2.getContext ( '2d');
+
         originPoint = { 'x' : 100, 'y' : chart_layer1.height - 100 };
 
         powVals.push ( 0 );
@@ -95,12 +104,8 @@
         }
     }
 
-
     var _ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
     function startApp ( ) {
-
-        console.log ( 'STARTING APP' );
-
         _ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
                 { 'destination' : _virtualMachinesUrl, 'callback' : onStartupCallsReturn }
         );
@@ -215,8 +220,6 @@
 
     function plotVM ( chartData ) {
 
-        console.log ( 'PLOTTING VM' );
-
         for ( i = 0; i < chartData.length; i++ ) {
 
             var vmPI = chartData [ i ].priceindex;
@@ -245,10 +248,10 @@
             var yPoint = computePoint ( yAxisPoints, dsPI, axisLength );
             var radius = ( 1 * vmPI <= 10 ? 1 * vmPI : 10 );
 
-            chart_layer1_context.fillStyle = '#0000FF';
-            chart_layer1_context.beginPath();
-            chart_layer1_context.arc ( originPoint.x + xPoint, originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
-            chart_layer1_context.fill();
+            chart_layer2_context.fillStyle = '#0000FF';
+            chart_layer2_context.beginPath();
+            chart_layer2_context.arc ( originPoint.x + xPoint, originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
+            chart_layer2_context.fill();
         }
 
         function computePoint ( arr, point, axisLength ) {
@@ -289,8 +292,10 @@
 
 </script>
 
-<canvas id="chart_layer1" width="700" height="625"></canvas>
-<div id="rawData" style="font-family: Arial; font-size: 12px"></div>
+<canvas id="chart_layer1" width="700" height="625" style="z-index: 0;"></canvas>
+<canvas id="chart_layer2" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+
+<div id="rawData" style="font-family: Arial; font-size: 12px; position: relative; left: 0; top: 0;"></div>
 
 </body>
 
