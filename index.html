@@ -204,17 +204,13 @@
 
         plotVM ( [ vmAndHostObj ] );
 
-        // _vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
+        _vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
 
-        /*
         if ( _vmAndHostAndDatastoreInfo.length === _vmInfo.length ) {
             // var str = JSON.stringify ( _vmAndHostInfo );
             // jQuery ( '#chartContainer' ).text ( str );
-            plotChart ( _vmAndHostAndDatastoreInfo );
+            turnIntoCSV ( _vmAndHostAndDatastoreInfo );
         }
-        */
-
-        // turnInfoCSV ( );
     }
 
     function plotVM ( chartData ) {
@@ -239,7 +235,7 @@
 
             for ( j = 0; j < powVals.length; j++ ) {
 
-                if ( dsPI >= powVals [ j ] && hostPI < powVals [ j + 1 ] ) {
+                if ( dsPI >= powVals [ j ] && dsPI < powVals [ j + 1 ] ) {
                     yAxisPoints = [ j, powVals [ j ], powVals [ j + 1 ] ];
                     j = powVals.length;
                 }
@@ -253,8 +249,6 @@
             chart_layer1_context.beginPath();
             chart_layer1_context.arc ( originPoint.x + xPoint, originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
             chart_layer1_context.fill();
-
-            // turnIntoCSV ( chartData );
         }
 
         function computePoint ( arr, point, axisLength ) {
@@ -270,26 +264,26 @@
                 var unit = totalUnit / diff;
                 var plotPoint = diff / point;
 
-                return ( ( powValIndex - 1 )  * 50 ) + ( unit * plotPoint );
+                return ( ( powValIndex )  * 50 ) + ( unit * ( plotPoint * powValIndex ) );
             }
             catch ( e ) { console.log ( ); }
         }
+    }
 
-        function turnIntoCSV ( chartData )
-        {
-            var i, str, obj;
+    function turnIntoCSV ( chartData )
+    {
+        var i, str, obj;
 
-            str = '<div>vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex</div>';
+        str = '<div>vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex</div>';
 
-            for ( i = 0; i < chartData.length; i += 1 ) {
-                obj = chartData [ i ];
-                str = str + '<div>';
-                str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' + obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
-                str = str + '</div>';
-            }
-
-            jQuery ( '#rawData').html ( str );
+        for ( i = 0; i < chartData.length; i += 1 ) {
+            obj = chartData [ i ];
+            str = str + '<div>';
+            str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' + obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
+            str = str + '</div>';
         }
+
+        jQuery ( '#rawData').html ( str );
     }
 
 
