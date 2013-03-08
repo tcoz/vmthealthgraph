@@ -209,9 +209,10 @@
         vmAndHostObj.ds = dsDisplayName;
         vmAndHostObj.dspriceindex = dsPriceIndex;
 
-        plotVM ( [ vmAndHostObj ] );
-
+        // this is your bank, essentially.
         lap.vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
+
+        plotVM ( [ vmAndHostObj ] );
 
         if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
             // var str = JSON.stringify ( _vmAndHostInfo );
