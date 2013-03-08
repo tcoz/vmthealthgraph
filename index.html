@@ -19,61 +19,61 @@
 
 <script type="text/javascript">
 
-    // tcoz Framework namespace, only used by the utils and parser scripts in simple version.
-    // don't delete or change this or the tcoz and parser scripts won't work.
-    tcoz = { },
-    that = this;
+   // tcoz Framework namespace.
+   // Don't delete or change this.
+   tcoz = { };
 
-    // Alter these for your needs, watch the formatting, like trailing slashes and such.
-    var _applianceAddress = 'http://localhost:8400/vmturbo/api/';
-    var _virtualMachinesUrl = _applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex';
+   // lap is short for "localApp"
+   // Prevents collisions when integrating into larger structure.
+   var lap = { };
 
+   jQuery ( document ).ready ( function ( ) {
 
+       lap = {
+                applianceAddress : 'http://localhost:8400/vmturbo/api/',
+                originPoint : { },
+                chart_layer1 : null,
+                chart_layer1_context : null,
+                chart_layer2 : null,
+                chart_layer2_context : null,
+                powVals : [ ],
+                axisLength : 500,
+                vmInfo : [ ],
+                vmAndHostInfo : [ ],
+                vmAndHostAndDatastoreInfo : [ ]
+        };
 
-    // When the document loads, this will run.
-    jQuery ( document ).ready ( function ( ) {
-        setTimeout ( refreshWindow, 30000 );
-        drawBaseChart ( );
-        startApp ( );
+       setInterval ( startApp, 30000 );
+       drawBaseChart ( );
+       startApp ( );
+
     } );
-
-    function refreshWindow ( ) {
-        window.location.reload ( true );
-    }
-
-    var originPoint,
-        chart_layer1, chart_layer1_context,
-        chart_layer2, chart_layer2_context,
-        powVals = [ ],
-        axisLength = 500;
 
     function drawBaseChart ( )
     {
-        var i, j, xPoint, yPoint;
+        var i, xPoint, yPoint,
+            chart_layer1 = lap.chart_layer1 = jQuery ( '#chart_layer1' ).get ( 0 ),
+            chart_layer1_context = lap.chart_layer1_context = chart_layer1.getContext ( '2d' ),
+            chart_layer2 = lap.chart_layer2 = jQuery ( '#chart_layer2' ).get ( 0 ),
+            chart_layer2_context = lap.chart_layer2_context = chart_layer2.getContext ( '2d' ),
+            originPoint = lap.originPoint = { 'x' : 100, 'y' : chart_layer1.height - 100 };
 
-        chart_layer1 = jQuery ( '#chart_layer1' ).get ( 0 );
-        chart_layer1_context = chart_layer1.getContext ( '2d');
-        chart_layer2 = jQuery ( '#chart_layer2' ).get ( 0 );
-        chart_layer2_context = chart_layer2.getContext ( '2d');
-
-        originPoint = { 'x' : 100, 'y' : chart_layer1.height - 100 };
-
-        powVals.push ( 0 );
+        lap.powVals.push ( 0 );
 
         for ( i = 0; i < 10; i++ ) {
-            powVals.push ( Math.floor ( Math.pow ( 10, ( i * 0.477893 ) ) ) );
+            lap.powVals.push ( Math.floor ( Math.pow ( 10, ( i * 0.477893 ) ) ) );
         }
 
         chart_layer1_context.strokeStyle = '#000000';
 
         chart_layer1_context.beginPath ( );
         chart_layer1_context.moveTo ( originPoint.x, originPoint.y  );
-        chart_layer1_context.lineTo ( originPoint.x + axisLength, originPoint.y );
+        chart_layer1_context.lineTo ( originPoint.x + lap.axisLength, originPoint.y );
         chart_layer1_context.stroke ( );
 
         chart_layer1_context.beginPath ( );
         chart_layer1_context.moveTo ( originPoint.x, originPoint.y  );
-        chart_layer1_context.lineTo ( originPoint.x, originPoint.y - axisLength );
+        chart_layer1_context.lineTo ( originPoint.x, originPoint.y - lap.axisLength );
         chart_layer1_context.stroke ( );
 
         chart_layer1_context.font = 'bold 14px sans-serif';
@@ -83,40 +83,47 @@
 
         chart_layer1_context.font = '10px sans-serif';
 
-        for ( i = 0; i < powVals.length; i++ ) {
+        for ( i = 0; i < lap.powVals.length; i++ ) {
 
-            xPoint = originPoint.x + ( i * ( axisLength / 10 ) );
-            yPoint = originPoint.y - ( i * ( axisLength / 10 ) );
+            xPoint = originPoint.x + ( i * ( lap.axisLength / 10 ) );
+            yPoint = originPoint.y - ( i * ( lap.axisLength / 10 ) );
 
-            chart_layer1_context.fillText ( powVals [ i ].toString ( ), xPoint, originPoint.y + 15 );
-            chart_layer1_context.fillText ( powVals [ i ].toString ( ), originPoint.x - 40, yPoint );
+            chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), xPoint, originPoint.y + 15 );
+            chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), originPoint.x - 40, yPoint );
 
             chart_layer1_context.strokeStyle = '#666666';
             chart_layer1_context.beginPath ( );
             chart_layer1_context.moveTo ( xPoint, originPoint.y );
-            chart_layer1_context.lineTo ( xPoint, originPoint.y - axisLength );
+            chart_layer1_context.lineTo ( xPoint, originPoint.y - lap.axisLength );
             chart_layer1_context.stroke ( );
 
             chart_layer1_context.beginPath ( );
             chart_layer1_context.moveTo ( originPoint.x, yPoint );
-            chart_layer1_context.lineTo ( originPoint.x + axisLength, yPoint );
+            chart_layer1_context.lineTo ( originPoint.x + lap.axisLength, yPoint );
             chart_layer1_context.stroke ( );
         }
     }
 
-    var _ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
     function startApp ( ) {
-        _ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                { 'destination' : _virtualMachinesUrl, 'callback' : onStartupCallsReturn }
+
+        lap.vmInfo = [ ];
+        lap.vmAndHostInfo = [ ];
+        lap.vmAndHostAndDatastoreInfo = [ ];
+
+        clearContext ( lap.chart_layer2_context );
+
+        var virtualMachinesUrl = lap.applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex',
+            ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+
+        ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+                { 'destination' : virtualMachinesUrl, 'callback' : onStartupCallsReturn }
         );
+
     }
 
-    var _vmInfo = [ ];
     function onStartupCallsReturn ( dataObj ) {
 
-        console.log ( 'STARTUP CALLS RETURNED' );
-
-        var i,
+        var i, ajaxCallCommand,
             xmlDoc,
             virtualMachines, vmElement, vmObj, vmDisplayName, vmPriceIndex, vmUUID,
             hostCallUrl;
@@ -134,28 +141,26 @@
                 vmPriceIndex = jQuery ( vmElement ).attr ( 'priceIndex' );
                 vmUUID = jQuery ( vmElement ).attr ( 'uuid' );
 
-                _vmInfo.push ( { 'vm' : vmDisplayName, 'priceindex' : vmPriceIndex, 'uuid' : vmUUID } );
+                lap.vmInfo.push ( { 'vm' : vmDisplayName, 'priceindex' : vmPriceIndex, 'uuid' : vmUUID } );
             }
         }
 
-        for ( i = 0; i < _vmInfo.length; i += 1 ) {
-            vmObj = _vmInfo [ i ];
-            hostCallUrl = _applianceAddress + 'markets/Market/virtualmachines/' + vmObj.uuid + '/hosts?property=priceIndex';
+        for ( i = 0; i < lap.vmInfo.length; i += 1 ) {
+            vmObj = lap.vmInfo [ i ];
+            hostCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmObj.uuid + '/hosts?property=priceIndex';
 
-            _ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+            ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+            ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
                     { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
             );
         }
     }
 
-    var _vmAndHostInfo = [ ];
     function onHostsCallsReturn ( dataObj ) {
 
-        console.log ( 'HOSTS CALL RETURNED' );
-
-        var i,
+        var i, ajaxCallCommand,
             xmlDoc,
-            vmObj, vmAndHostObj, vmElement,
+            vmObj, vmAndHostObj,
             hostElement, hostDisplayName, hostPriceIndex,
             dsCallUrl;
 
@@ -171,28 +176,25 @@
         vmObj = dataObj.data;
         vmAndHostObj = { 'vm' : vmObj.vm, 'priceindex' : vmObj.priceindex, 'uuid' : vmObj.uuid, 'host' : hostDisplayName, 'hostpriceindex' : hostPriceIndex };
 
-        _vmAndHostInfo.push ( vmAndHostObj );
+        lap.vmAndHostInfo.push ( vmAndHostObj );
 
-        if ( _vmAndHostInfo.length === _vmInfo.length ) {
+        if ( lap.vmAndHostInfo.length === lap.vmInfo.length ) {
 
-            for ( i = 0; i < _vmAndHostInfo.length; i += 1 ) {
-                vmAndHostObj = _vmAndHostInfo [ i ];
-                dsCallUrl = _applianceAddress + 'markets/Market/virtualmachines/' + vmAndHostObj.uuid + '/datastores?property=priceIndex';
+            for ( i = 0; i < lap.vmAndHostInfo.length; i += 1 ) {
+                vmAndHostObj = lap.vmAndHostInfo [ i ];
+                dsCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmAndHostObj.uuid + '/datastores?property=priceIndex';
 
-                _ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+                ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+                ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
                         { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
                 );
             }
         }
     }
 
-    var _vmAndHostAndDatastoreInfo = [ ];
     function onDataStoreCallsReturn ( dataObj ) {
 
-        console.log ( 'DATA CALLS RETURNED' );
-
-        var i,
-            xmlDoc,
+        var xmlDoc,
             vmAndHostObj,
             dsElement, dsDisplayName, dsPriceIndex;
 
@@ -209,12 +211,12 @@
 
         plotVM ( [ vmAndHostObj ] );
 
-        _vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
+        lap.vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
 
-        if ( _vmAndHostAndDatastoreInfo.length === _vmInfo.length ) {
+        if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
             // var str = JSON.stringify ( _vmAndHostInfo );
             // jQuery ( '#chartContainer' ).text ( str );
-            turnIntoCSV ( _vmAndHostAndDatastoreInfo );
+            turnIntoCSV ( lap.vmAndHostAndDatastoreInfo );
         }
     }
 
@@ -222,63 +224,64 @@
 
         for ( i = 0; i < chartData.length; i++ ) {
 
-            var vmPI = chartData [ i ].priceindex;
-            var hostPI = chartData [ i ].hostpriceindex;
-            var dsPI = chartData [ i ].dspriceindex;
-            var xAxisPoints;
-            var yAxisPoints;
+            var vmPI = chartData [ i ].priceindex,
+                hostPI = chartData [ i ].hostpriceindex,
+                dsPI = chartData [ i ].dspriceindex,
+                xAxisPoints, yAxisPoints, xPoint, yPoint,
+                radius = 1;
 
-            for ( j = 0; j < powVals.length; j++ ) {
+            for ( j = 0; j < lap.powVals.length; j++ ) {
 
-                if ( hostPI >= powVals [ j ] && hostPI < powVals [ j + 1 ] ) {
-                    xAxisPoints = [ j, powVals [ j ], powVals [ j + 1 ] ];
-                    j = powVals.length;
+                if ( hostPI >= lap.powVals [ j ] && hostPI < lap.powVals [ j + 1 ] ) {
+                    xAxisPoints = [ j, lap.powVals [ j ], lap.powVals [ j + 1 ] ];
+                    j = lap.powVals.length;
                 }
             }
 
-            for ( j = 0; j < powVals.length; j++ ) {
+            for ( j = 0; j < lap.powVals.length; j++ ) {
 
-                if ( dsPI >= powVals [ j ] && dsPI < powVals [ j + 1 ] ) {
-                    yAxisPoints = [ j, powVals [ j ], powVals [ j + 1 ] ];
-                    j = powVals.length;
+                if ( dsPI >= lap.powVals [ j ] && dsPI < lap.powVals [ j + 1 ] ) {
+                    yAxisPoints = [ j, lap.powVals [ j ], lap.powVals [ j + 1 ] ];
+                    j = lap.powVals.length;
                 }
             }
 
-            var radius = 1;
-            for ( j = 0; j < powVals.length; j++ ) {
+            for ( j = 0; j < lap.powVals.length; j++ ) {
 
-                if ( vmPI >= powVals [ j ] && vmPI < powVals [ j + 1 ] ) {
+                if ( vmPI >= lap.powVals [ j ] && vmPI < lap.powVals [ j + 1 ] ) {
                     radius = j * 2;
-                    j = powVals.length;
+                    j = lap.powVals.length;
                 }
             }
 
-            var xPoint = computePoint ( xAxisPoints, hostPI, axisLength );
-            var yPoint = computePoint ( yAxisPoints, dsPI, axisLength );
+            xPoint = computePoint ( xAxisPoints, hostPI );
+            yPoint = computePoint ( yAxisPoints, dsPI );
 
-            chart_layer2_context.fillStyle = '#0000FF';
-            chart_layer2_context.beginPath();
-            chart_layer2_context.arc ( originPoint.x + xPoint, originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
-            chart_layer2_context.fill();
+            lap.chart_layer2_context.fillStyle = '#0000FF';
+            lap.chart_layer2_context.beginPath();
+            lap.chart_layer2_context.arc ( lap.originPoint.x + xPoint, lap.originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
+            lap.chart_layer2_context.fill();
         }
+    }
 
-        function computePoint ( arr, point, axisLength ) {
+    function computePoint ( arr, point ) {
 
-            try {
-                var totalUnit = axisLength / 10;
-                var powValIndex = arr [ 0 ];
-                var start = arr [ 1 ];
-                var end = arr [ 2 ];
-                var totalSpace = axisLength / 10;
+        var retVal = 0;
 
-                var diff = end - start;
-                var unit = totalUnit / diff;
-                var plotPoint = diff / point;
+        try {
+            var totalUnit = lap.axisLength / 10,
+                powValIndex = arr [ 0 ],
+                start = arr [ 1 ],
+                end = arr [ 2 ],
+                diff = end - start,
+                unit = totalUnit / diff,
+                plotPoint = diff / point;
 
-                return ( ( powValIndex )  * 50 ) + ( unit * ( plotPoint * powValIndex ) );
-            }
-            catch ( e ) { console.log ( ); }
+           retVal = ( ( powValIndex )  * 50 ) + ( unit * ( plotPoint * powValIndex ) );
         }
+        catch ( e ) { console.log ( ); retVal = 0; }
+
+        return retVal;
     }
 
     function turnIntoCSV ( chartData )
@@ -297,13 +300,20 @@
         jQuery ( '#rawData').html ( str );
     }
 
+   function clearContext ( context )
+   {
+       context.setTransform ( 1, 0, 0, 1, 0, 0 );
+       context.clearRect ( 0, 0, lap.chart_layer1.width, lap.chart_layer1.height );
+       context.restore ( );
+   }
+
 
 </script>
 
 <canvas id="chart_layer1" width="700" height="625" style="z-index: 0;"></canvas>
 <canvas id="chart_layer2" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
 
-<div id="rawData" style="font-family: Arial; font-size: 12px; position: relative; left: 0; top: 0;"></div>
+<div id="rawData" class="rawDataStyle"></div>
 
 </body>
 
