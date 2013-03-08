@@ -258,10 +258,10 @@
             xPoint = computePoint ( xAxisPoints, hostPI );
             yPoint = computePoint ( yAxisPoints, dsPI );
 
-            lap.chart_layer2_context.fillStyle = '#0000FF';
+            lap.chart_layer2_context.fillStyle = determineColor ( vmPI );
             lap.chart_layer2_context.beginPath();
             lap.chart_layer2_context.arc ( lap.originPoint.x + xPoint, lap.originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
-            lap.chart_layer2_context.fill();
+            lap.chart_layer2_context.fill ( );
         }
     }
 
@@ -284,6 +284,17 @@
 
         return retVal;
     }
+
+   function determineColor ( vmPI )
+   {
+       var retVal = '#0000FF';
+
+       if ( vmPI >= 1.2345 && vmPI < 6.25 ) { retVal = '#00FF00'; }
+       else if ( vmPI >= 6.25 && vmPI < 25 ) { retVal = '#FFFF00'; }
+       else if ( vmPI > 25 ) { retVal = '#FF0000'; }
+
+       return retVal;
+   }
 
     function turnIntoCSV ( chartData )
     {
