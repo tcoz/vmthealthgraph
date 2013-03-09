@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 
-<html>
+<html xmlns="http://www.w3.org/1999/html">
 
 <head>
     <title>VMTurbo Entity Graph</title>
 
     <link rel="stylesheet" href="css/main.css">
-    <link type="text/css" rel="Stylesheet" href="js/libs/blackbirdjs/blackbird.css" />
-    <script type="text/javascript" src="js/libs/blackbirdjs/blackbird.js"></script>
     <script src="js/libs/jquery-1.8.3.min.js"></script>
     <script type="text/javascript" src="js/libs/tcoz/jsbase/jsbase.js"></script>
     <script type="text/javascript" src="js/libs/tcoz/jsbase/singletons_jsbase.js"></script>
@@ -19,37 +17,37 @@
 
 <script type="text/javascript">
 
-   // tcoz Framework and local app namespaces.
-   // Don't delete or change these.
-   var tcoz = { },
-       lap = { };
+// tcoz Framework and local app namespaces.
+// Don't delete or change these.
+    var tcoz = { },
+        lap = { };
 
-   jQuery ( document ).ready ( function ( ) {
+    jQuery ( document ).ready ( function ( ) {
 
-       lap = {
-                applianceAddress : 'http://localhost:8400/vmturbo/api/',
-                chart_background : jQuery ( '#chart_background' ).get ( 0 ),
-                chart_background_context : null,
-                chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
-                chart_layer1_context : null,
-                chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
-                chart_layer2_context : null,
-                powVals : [ ],
-                axisLength : 500,
-                vmInfo : [ ],
-                vmAndHostInfo : [ ],
-                vmAndHostAndDatastoreInfo : [ ]
+        lap = {
+            applianceAddress : 'http://localhost:8400/vmturbo/api/',
+            chart_background : jQuery ( '#chart_background' ).get ( 0 ),
+            chart_indicators : jQuery ( '#chart_indicators' ).get ( 0 ),
+            chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
+            chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
+            powVals : [ ],
+            axisLength : 500,
+            vmInfo : [ ],
+            vmAndHostInfo : [ ],
+            vmAndHostAndDatastoreInfo : [ ],
+            intervalHandle : -1
         };
 
-       lap.chart_background_context = lap.chart_background.getContext ( '2d' );
-       lap.chart_layer1_context = lap.chart_layer1.getContext ( '2d' );
-       lap.chart_layer2_context = lap.chart_layer2.getContext ( '2d' );
-       lap.originPoint = { 'x' : 100, 'y' : lap.chart_layer1.height - 100 };
+        lap.chart_background_context = lap.chart_background.getContext ( '2d' );
+        lap.chart_indicators_context = lap.chart_indicators.getContext ( '2d' );
+        lap.chart_layer1_context = lap.chart_layer1.getContext ( '2d' );
+        lap.chart_layer2_context = lap.chart_layer2.getContext ( '2d' );
+        lap.originPoint = { 'x' : 100, 'y' : lap.chart_layer1.height - 100 };
 
-       setInterval ( startApp, 30000 );
+        lap.intervalHandle = setInterval ( startApp, 30000 );
 
-       drawBaseChart ( );
-       startApp ( );
+        drawBaseChart ( );
+        startApp ( );
 
     } );
 
@@ -112,23 +110,23 @@
         lap.vmAndHostInfo = [ ];
         lap.vmAndHostAndDatastoreInfo = [ ];
 
+        clearContext ( lap.chart_indicators_context );
         clearContext ( lap.chart_layer2_context );
 
         var virtualMachinesUrl = lap.applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex',
-            ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+                ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
 
         ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                { 'destination' : virtualMachinesUrl, 'callback' : onStartupCallsReturn }
+                                                      { 'destination' : virtualMachinesUrl, 'callback' : onStartupCallsReturn }
         );
-
     }
 
     function onStartupCallsReturn ( dataObj ) {
 
         var i, ajaxCallCommand,
-            xmlDoc,
-            virtualMachines, vmElement, vmObj, vmDisplayName, vmPriceIndex, vmUUID,
-            hostCallUrl;
+               xmlDoc,
+               virtualMachines, vmElement, vmObj, vmDisplayName, vmPriceIndex, vmUUID,
+               hostCallUrl;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
@@ -153,7 +151,7 @@
 
             ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
             ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                    { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
+                { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
             );
         }
     }
@@ -161,12 +159,9 @@
     function onHostsCallsReturn ( dataObj ) {
 
         var i, ajaxCallCommand,
-            xmlDoc,
-            vmObj, vmAndHostObj,
-            hostElement, hostDisplayName, hostPriceIndex,
-            dsCallUrl;
-
-        log.info ( dataObj.ajaxReturn );
+                xmlDoc,
+                vmObj, vmAndHostObj,
+                hostElement, hostDisplayName, hostPriceIndex, hostUUID;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
@@ -174,21 +169,25 @@
         hostElement = jQuery ( xmlDoc ).find ( 'ServiceEntity' );
         hostDisplayName = jQuery ( hostElement ).attr ( 'displayName' );
         hostPriceIndex = jQuery ( hostElement ).attr ( 'priceIndex' );
+        hostUUID = jQuery ( hostElement ).attr ( 'uuid' );
 
         vmObj = dataObj.data;
-        vmAndHostObj = { 'vm' : vmObj.vm, 'priceindex' : vmObj.priceindex, 'uuid' : vmObj.uuid, 'host' : hostDisplayName, 'hostpriceindex' : hostPriceIndex };
+        vmObj.host =  hostDisplayName;
+        vmObj.hostpriceindex = hostPriceIndex;
+        vmObj.hostuuid = hostUUID;
 
-        lap.vmAndHostInfo.push ( vmAndHostObj );
+        lap.vmAndHostInfo.push ( vmObj );
 
         if ( lap.vmAndHostInfo.length === lap.vmInfo.length ) {
 
             for ( i = 0; i < lap.vmAndHostInfo.length; i += 1 ) {
                 vmAndHostObj = lap.vmAndHostInfo [ i ];
-                dsCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmAndHostObj.uuid + '/datastores?property=priceIndex';
+                dsCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmAndHostObj.uuid +
+                            '/datastores?property=priceIndex';
 
                 ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
                 ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                        { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
+                    { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
                 );
             }
         }
@@ -198,7 +197,7 @@
 
         var xmlDoc,
             vmAndHostObj,
-            dsElement, dsDisplayName, dsPriceIndex;
+            dsElement, dsDisplayName, dsPriceIndex, dsuuid;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
@@ -206,10 +205,12 @@
         dsElement = jQuery ( xmlDoc ).find ( 'ServiceEntity' );
         dsDisplayName = jQuery ( dsElement ).attr ( 'displayName' );
         dsPriceIndex = jQuery ( dsElement ).attr ( 'priceIndex' );
+        dsuuid = jQuery ( dsElement ).attr ( 'uuid' );
 
         vmAndHostObj = dataObj.data;
         vmAndHostObj.ds = dsDisplayName;
         vmAndHostObj.dspriceindex = dsPriceIndex;
+        vmAndHostObj.dsuuid = dsuuid;
 
         // this is your bank, essentially.
         lap.vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
@@ -228,9 +229,10 @@
 
         for ( i = 0; i < chartData.length; i++ ) {
 
-            var vmPI = chartData [ i ].priceindex,
-                hostPI = chartData [ i ].hostpriceindex,
-                dsPI = chartData [ i ].dspriceindex,
+            var vmObj = chartData [ i ],
+                vmPI = vmObj.priceindex,
+                hostPI = vmObj.hostpriceindex,
+                dsPI = vmObj.dspriceindex,
                 xAxisPoints, yAxisPoints, xPoint, yPoint,
                 radius = 1;
 
@@ -261,10 +263,13 @@
             xPoint = computePoint ( xAxisPoints, hostPI );
             yPoint = computePoint ( yAxisPoints, dsPI );
 
+            vmObj.x = lap.originPoint.x + xPoint;
+            vmObj.y = lap.originPoint.y - yPoint;
+
             lap.chart_layer2_context.fillStyle = determineColor ( vmPI );
             lap.chart_layer2_context.strokeStyle = '#000000';
             lap.chart_layer2_context.beginPath();
-            lap.chart_layer2_context.arc ( lap.originPoint.x + xPoint, lap.originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
+            lap.chart_layer2_context.arc ( vmObj.x, vmObj.y, radius, 0, 2 * Math.PI, false );
             lap.chart_layer2_context.fill ( );
             lap.chart_layer2_context.stroke ( );
         }
@@ -283,77 +288,203 @@
                 unit = totalUnit / diff,
                 plotPoint = diff / point;
 
-           retVal = ( ( powValIndex )  * 50 ) + ( unit * ( plotPoint * powValIndex ) );
+            retVal = Math.floor ( ( ( powValIndex )  * 50 ) + ( unit * ( plotPoint * powValIndex ) ) );
         }
         catch ( e ) { console.log ( ); retVal = 0; }
 
         return retVal;
     }
 
-   function determineColor ( vmPI ) {
-       var retVal = '#0000FF';
+    function determineColor ( vmPI ) {
 
-       if ( vmPI >= 1.2345 && vmPI < 6.25 ) { retVal = '#00FF00'; }
-       else if ( vmPI >= 6.25 && vmPI < 25 ) { retVal = '#FFFF00'; }
-       else if ( vmPI > 25 ) { retVal = '#FF0000'; }
+        var retVal = '#0000FF';
 
-       return retVal;
-   }
+        if ( vmPI >= 1.2345 && vmPI < 6.25 ) { retVal = '#00FF00'; }
+        else if ( vmPI >= 6.25 && vmPI < 25 ) { retVal = '#FFFF00'; }
+        else if ( vmPI > 25 ) { retVal = '#FF0000'; }
 
-   function buildDataTable ( ) {
+        return retVal;
+    }
 
-       var i, vmObj,
-           vm, vmpi, host, hostpi, ds, dspi,
-           trStart = '<tr>', trEnd = '</tr>',
-           tdColor, tdEnd = '</td>',
-           tdStartRed = '<td bgcolor="#ffc0c0">',
-           tdStartYellow = '<td bgcolor="#fffd93">',
-           tdStartGreen = '<td bgcolor="#c3ffc0">',
-           tdStartBlue = '<td bgcolor="#d0e4fd">',
-           divHTML = '<table cellspacing="2" cellpadding="2"><tr style="background-color: #DDDDDD;"><td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td></tr>';
+    function buildDataTable ( ) {
+
+        var i, vmObj,
+            vm, vmpi, vmuuid, vmx, vmy,
+            host, hostpi, hostuuid, ds, dspi, dsuuid,
+            trStart = '<tr>', trEnd = '</tr>',
+            tdColor, tdEnd = '</td>',
+            tdStartRed = '<td bgcolor="#ffc0c0">',
+            tdStartYellow = '<td bgcolor="#fffd93">',
+            tdStartGreen = '<td bgcolor="#c3ffc0">',
+            tdStartBlue = '<td bgcolor="#d0e4fd">',
+            divHTML = '<table cellspacing="2" cellpadding="2">' +
+                      '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
+                      '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
+                      '</tr>';
 
 
-       for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
+        for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
 
-           vmObj = lap.vmAndHostAndDatastoreInfo [ i ],
-           vm = vmObj.vm,
-           vmpi = vmObj.priceindex,
-           host = vmObj.host,
-           hostpi = vmObj.hostpriceindex,
-           ds = vmObj.ds,
-           dspi = vmObj.dspriceindex,
-           divHTML = divHTML + trStart;
+            vmObj = lap.vmAndHostAndDatastoreInfo [ i ],
+                    vm = vmObj.vm,
+                    vmuuid = vmObj.uuid,
+                    vmpi = vmObj.priceindex,
+                    vmx = vmObj.x,
+                    vmy = vmObj.y,
+                    host = vmObj.host,
+                    hostpi = vmObj.hostpriceindex,
+                    hostuuid = vmObj.hostuuid,
+                    ds = vmObj.ds,
+                    dspi = vmObj.dspriceindex,
+                    dsuuid = vmObj.dsuuid,
+                    divHTML = divHTML + trStart;
 
-           if ( vmpi < 1.2345 ) { tdColor = tdStartBlue; }
-           else if ( vmpi >= 1.2345 && vmpi < 6.25 ) { tdColor = tdStartGreen; }
-           else if ( vmpi >= 6.25 && vmpi < 25 ) { tdColor = tdStartYellow; }
-           else if ( vmpi > 25 ) { tdColor = tdStartRed; }
+            if ( vmpi < 1.2345 ) { tdColor = tdStartBlue; }
+            else if ( vmpi >= 1.2345 && vmpi < 6.25 ) { tdColor = tdStartGreen; }
+            else if ( vmpi >= 6.25 && vmpi < 25 ) { tdColor = tdStartYellow; }
+            else if ( vmpi > 25 ) { tdColor = tdStartRed; }
 
-           divHTML = divHTML + tdColor + '<b>' + vm + '</b>' + tdEnd + tdColor + vmpi + tdEnd;
+            divHTML = divHTML + tdColor +
+                      '<span onmouseover="onSpanMouseEvent ( event, this )"' +
+                      ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                      ' onclick="onSpanMouseEvent ( event, this )"' +
+                      ' class="unselectable">' +
+                      '<b>' + vm + '</b>' +
+                      '<span id="uuid" style="display: none;">' + vmuuid + '</span>' +
+                      '<span id="point" style="display: none;">' + vmx + '|' + vmy + '</span></span>' +
+                      tdEnd + tdColor + vmpi + tdEnd;
 
-           if ( hostpi < 1.2345 ) { tdColor = tdStartBlue; }
-           else if ( hostpi >= 1.2345 && hostpi < 6.25 ) { tdColor = tdStartGreen; }
-           else if ( hostpi >= 6.25 && hostpi < 25 ) { tdColor = tdStartYellow; }
-           else if ( hostpi > 25 ) { tdColor = tdStartRed; }
+            if ( hostpi < 1.2345 ) { tdColor = tdStartBlue; }
+            else if ( hostpi >= 1.2345 && hostpi < 6.25 ) { tdColor = tdStartGreen; }
+            else if ( hostpi >= 6.25 && hostpi < 25 ) { tdColor = tdStartYellow; }
+            else if ( hostpi > 25 ) { tdColor = tdStartRed; }
 
-           divHTML = divHTML + tdColor + host + tdEnd + tdColor + hostpi + tdEnd;
+            divHTML = divHTML + tdColor +
+                    '<span onmouseover="onSpanMouseEvent ( event, this )"' +
+                    ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                    ' onclick="onSpanMouseEvent ( event, this )"' +
+                    ' class="unselectable">' +
+                    '<b>' + host + '</b>' +
+                    '<span id="uuid" style="display: none;">' + hostuuid + '</span></span>' +
+                    tdEnd + tdColor + hostpi + tdEnd;
 
-           if ( dspi < 1.2345 ) { tdColor = tdStartBlue; }
-           else if ( dspi >= 1.2345 && dspi < 6.25 ) { tdColor = tdStartGreen; }
-           else if ( dspi >= 6.25 && dspi < 25 ) { tdColor = tdStartYellow; }
-           else if ( dspi > 25 ) { tdColor = tdStartRed; }
+            if ( dspi < 1.2345 ) { tdColor = tdStartBlue; }
+            else if ( dspi >= 1.2345 && dspi < 6.25 ) { tdColor = tdStartGreen; }
+            else if ( dspi >= 6.25 && dspi < 25 ) { tdColor = tdStartYellow; }
+            else if ( dspi > 25 ) { tdColor = tdStartRed; }
 
-           divHTML = divHTML + tdColor + ds + tdEnd + tdColor + dspi + tdEnd + trEnd;
+            divHTML = divHTML + tdColor +
+                    '<span onmouseover="onSpanMouseEvent ( event, this )"' +
+                    ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                    ' onclick="onSpanMouseEvent ( event, this )"' +
+                    ' class="unselectable">' +
+                    '<b>' + ds + '</b>' +
+                    '<span id="uuid" style="display: none;">' + dsuuid + '</span></span>' +
+                    tdEnd + tdColor + dspi + tdEnd + trEnd;
+        }
 
-       }
+        divHTML = divHTML + '</table>';
 
-       divHTML = divHTML + '</table>';
+        jQuery ( '#dataTable' ).html ( divHTML );
+    }
 
-       jQuery ( '#dataTable' ).html ( divHTML );
+    function onSpanMouseEvent ( event, span ) {
 
-   }
+        if ( event.type === 'mouseover' ) {
+
+            var vmPoint = jQuery ( span ).find ( '#point' ),
+                coords = vmPoint.text ( ).split ( '|' ),
+                vmx = coords [ 0 ],
+                vmy = coords [ 1 ];
+
+            clearContext ( lap.chart_indicators_context );
+            lap.chart_indicators_context.fillStyle = '#ff9900'; // orange
+            lap.chart_indicators_context.fillRect ( vmx - 20, vmy - 20, 40, 40 );
+
+            span.style.borderBottom = span.style.borderTop = '3px solid #ff9900';
+        }
+        else if ( event.type === 'mouseout' ) {
+
+            span.style.borderBottom =  span.style.borderTop = 'none';
+        }
+        else if ( event.type === 'click' ) {
+
+            createNotificationsDialog ( span );
+        }
+    }
+
+    function createNotificationsDialog ( span ) {
+
+        var ajaxCallCommand,
+            xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
+            ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
+            vmuuid = jQuery ( span ).find ( '#uuid' ).text (),
+            notificationsURL = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmuuid + '/notifications';
+
+        jQuery ( '#modalWindow' ).css ( { 'display' : 'inline' } );
+        jQuery ( '#modalContent' ).css ( { 'display' : 'inline', 'left' : xpos, 'top' : ypos } );
+        jQuery ( '#modalContentTitle' ).html ( '<b>Notifications: ' + span.innerText + '</b>' );
+
+        console.log ( notificationsURL );
+
+        ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+        ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+            { 'destination' : notificationsURL, 'callback' : onNotificationsReturn, 'data' : { } }
+        );
+    }
+
+    function onNotificationsReturn ( dataObj ) {
+
+        var xmlDoc,
+            notificationElements;
+
+        try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
+        catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
+
+        notificationElements = jQuery ( xmlDoc ).find ( 'Notification' );
+        populateModalContent ( notificationElements );
+    }
+
+    function populateModalContent ( notificationElements ) {
+
+        var i, notification,
+            event, lastNotified, severity,
+            divBGColor, divHTML = "";
+
+        if ( notificationElements.length === 0 ) {
+            divHTML = '<div style="padding: 5px;">No notifications for this entity.</div>';
+        }
+        else {
+
+            for ( i = 0; i < notificationElements.length; i++ ) {
+
+                for ( i = 0; i < notificationElements.length; i++ ) {
+
+                    notification = notificationElements [ i ];
+                    event = jQuery ( notification ).attr ( 'event' );
+                    lastNotified = jQuery ( notification ).attr ( 'lastNotified' );
+                    severity = jQuery ( notification ).attr ( 'severity' ).toLowerCase ( );
+
+
+                    divBGColor = '#c3ffc0'; // green, normal
+                    if ( severity === 'critical' ) { divBGColor = '#ffc0c0'; }
+                    else if ( severity === 'major' ) { divBGColor = '#ff9900'; }
+                    else if ( severity === 'minor' ) { divBGColor = '#fffd93'; }
+
+                    console.log ( divBGColor );
+
+                    divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: '
+                                        + divBGColor + ';"><b>Severity: </b>' + severity +
+                                        '<br /><b>Last Notified: </b>' + new Date ( lastNotified * 1000 ) + '<br /><b>Event: </b>' + event + '</div>';
+                }
+            }
+        }
+
+        jQuery ( '#modalContentBody' ).html ( divHTML );
+    }
 
     function turnIntoCSV ( chartData ) {
+
         var i, str, obj;
 
         str = '<div>vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex</div>';
@@ -361,27 +492,65 @@
         for ( i = 0; i < chartData.length; i += 1 ) {
             obj = chartData [ i ];
             str = str + '<div>';
-            str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' + obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
+            str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' +
+                        obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
             str = str + '</div>';
         }
 
         jQuery ( '#rawData' ).html ( str );
     }
 
-   function clearContext ( context ) {
-       context.setTransform ( 1, 0, 0, 1, 0, 0 );
-       context.clearRect ( 0, 0, lap.chart_layer1.width, lap.chart_layer1.height );
-       context.restore ( );
-   }
+    function clearContext ( context ) {
 
+        context.setTransform ( 1, 0, 0, 1, 0, 0 );
+        context.clearRect ( 0, 0, lap.chart_layer1.width, lap.chart_layer1.height );
+        context.restore ( );
+    }
+
+    function onControlClick ( control ) {
+
+        if ( control.id === 'btnToggleRefresh' ) {
+
+            if ( lap.intervalHandle != null ) {
+                clearInterval ( lap.intervalHandle );
+                lap.intervalHandle = null;
+                control.innerText = 'Start Refresh';
+            }
+            else {
+                lap.intervalHandle = setInterval ( startApp, 30000 );
+                control.innerText = 'Stop Refresh';
+            }
+        }
+        else if ( control.id === 'btnCloseModalWindow' || control.id === 'modalWindow'  ) {
+
+            jQuery ( '#modalWindow' ).css ( { 'display' : 'none' } );
+            jQuery ( '#modalContent' ).css ( { 'display' : 'none' } );
+            jQuery ( '#modalContentTitle' ).html ( '' );
+            jQuery ( '#modalContentBody' ).html ( '' );
+        }
+    }
 
 </script>
 
-<canvas id="chart_background" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
-<canvas id="chart_layer1" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
-<canvas id="chart_layer2" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 2;"></canvas>
+<canvas id="chart_background" width="700" height="625" style="position: absolute; z-index: 0;"></canvas>
+<canvas id="chart_indicators" width="700" height="625" style="position: absolute; z-index: 1;"></canvas>
+<canvas id="chart_layer1" width="700" height="625" style="position: absolute; z-index: 2;"></canvas>
+<canvas id="chart_layer2" width="700" height="625" style="position: absolute; z-index: 3;"></canvas>
 
-<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px;"></div>
+<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px; z-index: 4;"></div>
+
+<div id="controls" style="position: absolute; left: 95px; top: 555px; z-index: 5;">
+    <button id="btnToggleRefresh" onclick="onControlClick ( this )">Stop Refresh</button>
+</div>
+
+<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 6;"></div>
+<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 7;">
+    <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD; font-family: 'Arial'; text-align: center; padding-top: 10px;"></div>
+    <div id="modalContentBody" style="width: 400px; height: 565px; font-family: 'Arial';"></div>
+    <div id="btnCloseModalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 2px; left: 379px; width: 14px; height: 16px;
+         background-color: #FFFFFF; border: 2px solid black; text-align: center; font-family: 'Arial'; font-size: 14px; font-weight: bold;"><span class="unselectable">X</span></div>
+</div>
+
 <div id="rawData" class="rawDataStyle"></div>
 
 </body>
