@@ -55,19 +55,16 @@
 
     function drawBaseChart ( ) {
 
-        var i, xPoint, yPoint, bgImage;
-
-        bgImage = new Image ( );
-        bgImage.src = 'images/chartbackground.jpg';
-        bgImage.onload = function ( ) {
-            lap.chart_background_context.drawImage ( bgImage, lap.originPoint.x, lap.originPoint.y - lap.axisLength );
-        };
+        var i, xPoint, yPoint;
 
         lap.powVals.push ( 0 );
 
         for ( i = 0; i < 10; i++ ) {
             lap.powVals.push ( Math.floor ( Math.pow ( 10, ( i * 0.477893 ) ) ) );
         }
+
+        lap.chart_background_context.fillStyle = '#c3ffc0';
+        lap.chart_background_context.fillRect ( lap.originPoint.x + 57, lap.originPoint.y - 130, 75, 74 );
 
         lap.chart_layer1_context.strokeStyle = '#000000';
 
@@ -220,8 +217,8 @@
         plotVM ( [ vmAndHostObj ] );
 
         if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
-            // var str = JSON.stringify ( _vmAndHostInfo );
-            // jQuery ( '#chartContainer' ).text ( str );
+            // var str = JSON.stringify ( lap.vmAndHostAndDatastoreInfo );
+            // jQuery ( '#rawData' ).text ( str );
             // turnIntoCSV ( lap.vmAndHostAndDatastoreInfo );
             buildDataTable ( );
         }
@@ -256,7 +253,7 @@
             for ( j = 0; j < lap.powVals.length; j++ ) {
 
                 if ( vmPI >= lap.powVals [ j ] && vmPI < lap.powVals [ j + 1 ] ) {
-                    radius = j * 2;
+                    radius = ( j + 1 ) * 2;
                     j = lap.powVals.length;
                 }
             }
@@ -305,6 +302,55 @@
 
    function buildDataTable ( ) {
 
+       var i, vmObj,
+           vm, vmpi, host, hostpi, ds, dspi,
+           trStart = '<tr>', trEnd = '</tr>',
+           tdColor, tdEnd = '</td>',
+           tdStartRed = '<td bgcolor="#ffc0c0">',
+           tdStartYellow = '<td bgcolor="#fffd93">',
+           tdStartGreen = '<td bgcolor="#c3ffc0">',
+           tdStartBlue = '<td bgcolor="#d0e4fd">',
+           divHTML = '<table cellspacing="2" cellpadding="2"><tr style="background-color: #DDDDDD;"><td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td></tr>';
+
+
+       for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
+
+           vmObj = lap.vmAndHostAndDatastoreInfo [ i ],
+           vm = vmObj.vm,
+           vmpi = vmObj.priceindex,
+           host = vmObj.host,
+           hostpi = vmObj.hostpriceindex,
+           ds = vmObj.ds,
+           dspi = vmObj.dspriceindex,
+           divHTML = divHTML + trStart;
+
+           if ( vmpi < 1.2345 ) { tdColor = tdStartBlue; }
+           else if ( vmpi >= 1.2345 && vmpi < 6.25 ) { tdColor = tdStartGreen; }
+           else if ( vmpi >= 6.25 && vmpi < 25 ) { tdColor = tdStartYellow; }
+           else if ( vmpi > 25 ) { tdColor = tdStartRed; }
+
+           divHTML = divHTML + tdColor + '<b>' + vm + '</b>' + tdEnd + tdColor + vmpi + tdEnd;
+
+           if ( hostpi < 1.2345 ) { tdColor = tdStartBlue; }
+           else if ( hostpi >= 1.2345 && hostpi < 6.25 ) { tdColor = tdStartGreen; }
+           else if ( hostpi >= 6.25 && hostpi < 25 ) { tdColor = tdStartYellow; }
+           else if ( hostpi > 25 ) { tdColor = tdStartRed; }
+
+           divHTML = divHTML + tdColor + host + tdEnd + tdColor + hostpi + tdEnd;
+
+           if ( dspi < 1.2345 ) { tdColor = tdStartBlue; }
+           else if ( dspi >= 1.2345 && dspi < 6.25 ) { tdColor = tdStartGreen; }
+           else if ( dspi >= 6.25 && dspi < 25 ) { tdColor = tdStartYellow; }
+           else if ( dspi > 25 ) { tdColor = tdStartRed; }
+
+           divHTML = divHTML + tdColor + ds + tdEnd + tdColor + dspi + tdEnd + trEnd;
+
+       }
+
+       divHTML = divHTML + '</table>';
+
+       jQuery ( '#dataTable' ).html ( divHTML );
+
    }
 
     function turnIntoCSV ( chartData ) {
@@ -319,7 +365,7 @@
             str = str + '</div>';
         }
 
-        jQuery ( '#rawData').html ( str );
+        jQuery ( '#rawData' ).html ( str );
     }
 
    function clearContext ( context ) {
@@ -335,6 +381,7 @@
 <canvas id="chart_layer1" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
 <canvas id="chart_layer2" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 2;"></canvas>
 
+<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px;"></div>
 <div id="rawData" class="rawDataStyle"></div>
 
 </body>
