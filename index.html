@@ -19,22 +19,20 @@
 
 <script type="text/javascript">
 
-   // tcoz Framework namespace.
-   // Don't delete or change this.
-   tcoz = { };
-
-   // lap is short for "localApp"
-   // Prevents collisions when integrating into larger structure.
-   var lap = { };
+   // tcoz Framework and local app namespaces.
+   // Don't delete or change these.
+   var tcoz = { },
+       lap = { };
 
    jQuery ( document ).ready ( function ( ) {
 
        lap = {
                 applianceAddress : 'http://localhost:8400/vmturbo/api/',
-                originPoint : { },
-                chart_layer1 : null,
+                chart_background : jQuery ( '#chart_background' ).get ( 0 ),
+                chart_background_context : null,
+                chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
                 chart_layer1_context : null,
-                chart_layer2 : null,
+                chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
                 chart_layer2_context : null,
                 powVals : [ ],
                 axisLength : 500,
@@ -43,20 +41,27 @@
                 vmAndHostAndDatastoreInfo : [ ]
         };
 
+       lap.chart_background_context = lap.chart_background.getContext ( '2d' );
+       lap.chart_layer1_context = lap.chart_layer1.getContext ( '2d' );
+       lap.chart_layer2_context = lap.chart_layer2.getContext ( '2d' );
+       lap.originPoint = { 'x' : 100, 'y' : lap.chart_layer1.height - 100 };
+
        setInterval ( startApp, 30000 );
+
        drawBaseChart ( );
        startApp ( );
 
     } );
 
-    function drawBaseChart ( )
-    {
-        var i, xPoint, yPoint,
-            chart_layer1 = lap.chart_layer1 = jQuery ( '#chart_layer1' ).get ( 0 ),
-            chart_layer1_context = lap.chart_layer1_context = chart_layer1.getContext ( '2d' ),
-            chart_layer2 = lap.chart_layer2 = jQuery ( '#chart_layer2' ).get ( 0 ),
-            chart_layer2_context = lap.chart_layer2_context = chart_layer2.getContext ( '2d' ),
-            originPoint = lap.originPoint = { 'x' : 100, 'y' : chart_layer1.height - 100 };
+    function drawBaseChart ( ) {
+
+        var i, xPoint, yPoint, bgImage;
+
+        bgImage = new Image ( );
+        bgImage.src = 'images/chartbackground.jpg';
+        bgImage.onload = function ( ) {
+            lap.chart_background_context.drawImage ( bgImage, lap.originPoint.x, lap.originPoint.y - lap.axisLength );
+        };
 
         lap.powVals.push ( 0 );
 
@@ -64,43 +69,43 @@
             lap.powVals.push ( Math.floor ( Math.pow ( 10, ( i * 0.477893 ) ) ) );
         }
 
-        chart_layer1_context.strokeStyle = '#000000';
+        lap.chart_layer1_context.strokeStyle = '#000000';
 
-        chart_layer1_context.beginPath ( );
-        chart_layer1_context.moveTo ( originPoint.x, originPoint.y  );
-        chart_layer1_context.lineTo ( originPoint.x + lap.axisLength, originPoint.y );
-        chart_layer1_context.stroke ( );
+        lap.chart_layer1_context.beginPath ( );
+        lap.chart_layer1_context.moveTo ( lap.originPoint.x, lap.originPoint.y  );
+        lap.chart_layer1_context.lineTo ( lap.originPoint.x + lap.axisLength, lap.originPoint.y );
+        lap.chart_layer1_context.stroke ( );
 
-        chart_layer1_context.beginPath ( );
-        chart_layer1_context.moveTo ( originPoint.x, originPoint.y  );
-        chart_layer1_context.lineTo ( originPoint.x, originPoint.y - lap.axisLength );
-        chart_layer1_context.stroke ( );
+        lap.chart_layer1_context.beginPath ( );
+        lap.chart_layer1_context.moveTo ( lap.originPoint.x, lap.originPoint.y  );
+        lap.chart_layer1_context.lineTo ( lap.originPoint.x, lap.originPoint.y - lap.axisLength );
+        lap.chart_layer1_context.stroke ( );
 
-        chart_layer1_context.font = 'bold 14px sans-serif';
-        chart_layer1_context.fillStyle = '#000000';
-        chart_layer1_context.fillText ( 'DS UI', 10, 300 );
-        chart_layer1_context.fillText ( 'HOST UI', 295, 570 );
+        lap.chart_layer1_context.font = 'bold 14px sans-serif';
+        lap.chart_layer1_context.fillStyle = '#000000';
+        lap.chart_layer1_context.fillText ( 'DS UI', 10, 300 );
+        lap.chart_layer1_context.fillText ( 'HOST UI', 295, 570 );
 
-        chart_layer1_context.font = '10px sans-serif';
+        lap.chart_layer1_context.font = '10px sans-serif';
 
         for ( i = 0; i < lap.powVals.length; i++ ) {
 
-            xPoint = originPoint.x + ( i * ( lap.axisLength / 10 ) );
-            yPoint = originPoint.y - ( i * ( lap.axisLength / 10 ) );
+            xPoint = lap.originPoint.x + ( i * ( lap.axisLength / 10 ) );
+            yPoint = lap.originPoint.y - ( i * ( lap.axisLength / 10 ) );
 
-            chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), xPoint, originPoint.y + 15 );
-            chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), originPoint.x - 40, yPoint );
+            lap.chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), xPoint, lap.originPoint.y + 15 );
+            lap.chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), lap.originPoint.x - 40, yPoint );
 
-            chart_layer1_context.strokeStyle = '#666666';
-            chart_layer1_context.beginPath ( );
-            chart_layer1_context.moveTo ( xPoint, originPoint.y );
-            chart_layer1_context.lineTo ( xPoint, originPoint.y - lap.axisLength );
-            chart_layer1_context.stroke ( );
+            lap.chart_layer1_context.strokeStyle = '#666666';
+            lap.chart_layer1_context.beginPath ( );
+            lap.chart_layer1_context.moveTo ( xPoint, lap.originPoint.y );
+            lap.chart_layer1_context.lineTo ( xPoint, lap.originPoint.y - lap.axisLength );
+            lap.chart_layer1_context.stroke ( );
 
-            chart_layer1_context.beginPath ( );
-            chart_layer1_context.moveTo ( originPoint.x, yPoint );
-            chart_layer1_context.lineTo ( originPoint.x + lap.axisLength, yPoint );
-            chart_layer1_context.stroke ( );
+            lap.chart_layer1_context.beginPath ( );
+            lap.chart_layer1_context.moveTo ( lap.originPoint.x, yPoint );
+            lap.chart_layer1_context.lineTo ( lap.originPoint.x + lap.axisLength, yPoint );
+            lap.chart_layer1_context.stroke ( );
         }
     }
 
@@ -217,7 +222,8 @@
         if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
             // var str = JSON.stringify ( _vmAndHostInfo );
             // jQuery ( '#chartContainer' ).text ( str );
-            turnIntoCSV ( lap.vmAndHostAndDatastoreInfo );
+            // turnIntoCSV ( lap.vmAndHostAndDatastoreInfo );
+            buildDataTable ( );
         }
     }
 
@@ -259,9 +265,11 @@
             yPoint = computePoint ( yAxisPoints, dsPI );
 
             lap.chart_layer2_context.fillStyle = determineColor ( vmPI );
+            lap.chart_layer2_context.strokeStyle = '#000000';
             lap.chart_layer2_context.beginPath();
             lap.chart_layer2_context.arc ( lap.originPoint.x + xPoint, lap.originPoint.y - yPoint, radius, 0, 2 * Math.PI, false );
             lap.chart_layer2_context.fill ( );
+            lap.chart_layer2_context.stroke ( );
         }
     }
 
@@ -285,8 +293,7 @@
         return retVal;
     }
 
-   function determineColor ( vmPI )
-   {
+   function determineColor ( vmPI ) {
        var retVal = '#0000FF';
 
        if ( vmPI >= 1.2345 && vmPI < 6.25 ) { retVal = '#00FF00'; }
@@ -296,8 +303,11 @@
        return retVal;
    }
 
-    function turnIntoCSV ( chartData )
-    {
+   function buildDataTable ( ) {
+
+   }
+
+    function turnIntoCSV ( chartData ) {
         var i, str, obj;
 
         str = '<div>vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex</div>';
@@ -312,8 +322,7 @@
         jQuery ( '#rawData').html ( str );
     }
 
-   function clearContext ( context )
-   {
+   function clearContext ( context ) {
        context.setTransform ( 1, 0, 0, 1, 0, 0 );
        context.clearRect ( 0, 0, lap.chart_layer1.width, lap.chart_layer1.height );
        context.restore ( );
@@ -322,8 +331,9 @@
 
 </script>
 
-<canvas id="chart_layer1" width="700" height="625" style="z-index: 0;"></canvas>
-<canvas id="chart_layer2" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+<canvas id="chart_background" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+<canvas id="chart_layer1" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+<canvas id="chart_layer2" width="700" height="625" style="position: absolute; left: 0; top: 0; z-index: 2;"></canvas>
 
 <div id="rawData" class="rawDataStyle"></div>
 
