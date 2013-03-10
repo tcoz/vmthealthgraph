@@ -21,6 +21,7 @@ textarea {
 body {
     font-size: 1em;
     line-height: 1.4;
+    background-color: #123F8F;
 }
 
 /*
@@ -106,7 +107,17 @@ textarea {
     -ms-user-select: none;      /* IE 10+ */
 }
 
+/* CSS 3 FEATURES */
+.roundedcorners {
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+}
 
+.boxshadow {
+    -moz-box-shadow: 4px 4px 2px #000;
+    -webkit-box-shadow: 4px 4px 2px #000;
+    box-shadow: 4px 4px 2px #000;
+}
 
 
 
