@@ -299,13 +299,20 @@
         return retVal;
     }
 
-    function determineColor ( vmPI ) {
+    function determineColor ( priceindex, colorType ) {
 
-        var retVal = '#0000FF';
+        var retVal,
+            colorVals = [ '#0000FF', '#00FF00', '#FFFF00', '#FF0000' ];
 
-        if ( vmPI >= lap.greenzone [ 0 ] && vmPI < lap.greenzone [ 1 ] ) { retVal = '#00FF00'; }
-        else if ( vmPI >= lap.greenzone [ 1 ] && vmPI < lap.greenzone [ 2 ] ) { retVal = '#FFFF00'; }
-        else if ( vmPI > lap.greenzone [ 2 ] ) { retVal = '#FF0000'; }
+        if ( colorType === 'pastel' ) {
+            colorVals = [ '#d0e4fd', '#c3ffc0', '#fffd93', '#ffc0c0' ];
+        }
+
+        retVal = colorVals [ 0 ];
+
+        if ( priceindex >= lap.greenzone [ 0 ] && priceindex < lap.greenzone [ 1 ] ) { retVal = colorVals [ 1 ]; }
+        else if ( priceindex >= lap.greenzone [ 1 ] && priceindex < lap.greenzone [ 2 ] ) { retVal = colorVals [ 2 ]; }
+        else if ( priceindex > lap.greenzone [ 2 ] ) { retVal = colorVals [ 3 ]; }
 
         return retVal;
     }
@@ -316,11 +323,7 @@
             vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
             host, hostpi, hostuuid, ds, dspi, dsuuid,
             trStart = '<tr>', trEnd = '</tr>',
-            tdColor, tdEnd = '</td>',
-            tdStartRed = '<td bgcolor="#ffc0c0">',
-            tdStartYellow = '<td bgcolor="#fffd93">',
-            tdStartGreen = '<td bgcolor="#c3ffc0">',
-            tdStartBlue = '<td bgcolor="#d0e4fd">',
+            tdStart = '<td bgcolor="', tdEnd = '</td>', tdColor,
             divHTML = '<table cellspacing="2" cellpadding="2">' +
                       '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
                       '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
@@ -345,10 +348,9 @@
             dsuuid = vmObj.dsuuid;
             divHTML = divHTML + trStart;
 
-            if ( vmpi < lap.greenzone [ 0 ] ) { tdColor = tdStartBlue; }
-            else if ( vmpi >= lap.greenzone [ 0 ] && vmpi < lap.greenzone [ 1 ] ) { tdColor = tdStartGreen; }
-            else if ( vmpi >= lap.greenzone [ 1 ] && vmpi < lap.greenzone [ 2 ] ) { tdColor = tdStartYellow; }
-            else if ( vmpi > lap.greenzone [ 2 ] ) { tdColor = tdStartRed; }
+            tdColor = tdStart + determineColor ( vmpi, 'pastel' ) + '">';
+
+            console.log ( tdStart );
 
             divHTML = divHTML + tdColor +
                       '<span id="vmdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
@@ -365,10 +367,7 @@
                             '"color" : "' + vmcolor + '"}' +
                       '</span>' + tdEnd + tdColor + vmpi + tdEnd;
 
-            if ( hostpi < lap.greenzone [ 0 ] ) { tdColor = tdStartBlue; }
-            else if ( hostpi >= lap.greenzone [ 0 ] && lap.greenzone [ 1 ] ) { tdColor = tdStartGreen; }
-            else if ( lap.greenzone [ 1 ] && hostpi < lap.greenzone [ 2 ] ) { tdColor = tdStartYellow; }
-            else if ( hostpi > lap.greenzone [ 2 ] ) { tdColor = tdStartRed; }
+            tdColor = tdStart + determineColor ( hostpi, 'pastel' ) + '">';
 
             divHTML = divHTML + tdColor +
                     '<span id="hostdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
@@ -379,10 +378,7 @@
                     '<span id="spandata" style="display: none;">' + hostuuid + '</span></span>' +
                     tdEnd + tdColor + hostpi + tdEnd;
 
-            if ( dspi < lap.greenzone [ 0 ] ) { tdColor = tdStartBlue; }
-            else if ( dspi >= lap.greenzone [ 0 ] && dspi < lap.greenzone [ 1 ] ) { tdColor = tdStartGreen; }
-            else if ( dspi >= lap.greenzone [ 1 ] && dspi < lap.greenzone [ 2 ] ) { tdColor = tdStartYellow; }
-            else if ( dspi > lap.greenzone [ 2 ] ) { tdColor = tdStartRed; }
+            tdColor = tdStart + determineColor ( dspi, 'pastel' ) + '">';
 
             divHTML = divHTML + tdColor +
                     '<span id="dsdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
@@ -422,14 +418,14 @@
                 vmx = coords [ 0 ];
                 vmy = coords [ 1 ];
 
-                lap.vm_indicators_context.fillStyle = '#CC66FF';
+                lap.vm_indicators_context.fillStyle = determineColor ( hostpi );
                 lap.vm_indicators_context.fillRect ( vmx - 1, ( lap.originPoint.y - lap.axisLength ), 3, lap.axisLength );
+                lap.vm_indicators_context.fillStyle = determineColor ( dspi );
                 lap.vm_indicators_context.fillRect ( lap.originPoint.x, vmy - 1, lap.axisLength, 3 );
 
                 lap.vm_indicators_context.fillStyle = '#ff9900'; // orange
                 lap.vm_indicators_context.fillRect ( vmx - 20, vmy - 20, 40, 40 );
 
-                console.log ( vmColor, vmRadius );
                 lap.vm_indicators_context.fillStyle = vmColor;
                 lap.vm_indicators_context.strokeStyle = '#000000';
                 lap.vm_indicators_context.beginPath();
@@ -465,8 +461,6 @@
         jQuery ( '#modalWindow' ).css ( { 'display' : 'inline' } );
         jQuery ( '#modalContent' ).css ( { 'display' : 'inline', 'left' : xpos, 'top' : ypos } );
         jQuery ( '#modalContentTitle' ).html ( '<b>Notifications: ' + span.innerText + '</b>' );
-
-        console.log ( notificationsURL );
 
         ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
         ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
@@ -512,11 +506,9 @@
                     else if ( severity === 'major' ) { divBGColor = '#ff9900'; }
                     else if ( severity === 'minor' ) { divBGColor = '#fffd93'; }
 
-                    console.log ( divBGColor );
-
-                    divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: '
-                                        + divBGColor + ';"><b>Severity: </b>' + severity +
-                                        '<br /><b>Last Notified: </b>' + new Date ( lastNotified * 1000 ) + '<br /><b>Event: </b>' + event + '</div>';
+                    divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: ' +
+                              divBGColor + ';"><b>Severity: </b>' + severity +
+                              '<br /><b>Last Notified: </b>' + new Date ( lastNotified * 1000 ) + '<br /><b>Event: </b>' + event + '</div>';
                 }
             }
         }
@@ -534,7 +526,7 @@
             obj = chartData [ i ];
             str = str + '<div>';
             str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' +
-                        obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
+                  obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
             str = str + '</div>';
         }
 
