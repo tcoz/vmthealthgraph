@@ -27,7 +27,7 @@
         lap = {
             applianceAddress : 'http://localhost:8400/vmturbo/api/',
             chart_background : jQuery ( '#chart_background' ).get ( 0 ),
-            chart_indicators : jQuery ( '#chart_indicators' ).get ( 0 ),
+            vm_indicators : jQuery ( '#vm_indicators' ).get ( 0 ),
             chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
             chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
             powVals : [ ],
@@ -39,7 +39,7 @@
         };
 
         lap.chart_background_context = lap.chart_background.getContext ( '2d' );
-        lap.chart_indicators_context = lap.chart_indicators.getContext ( '2d' );
+        lap.vm_indicators_context = lap.vm_indicators.getContext ( '2d' );
         lap.chart_layer1_context = lap.chart_layer1.getContext ( '2d' );
         lap.chart_layer2_context = lap.chart_layer2.getContext ( '2d' );
         lap.originPoint = { 'x' : 100, 'y' : lap.chart_layer1.height - 100 };
@@ -110,7 +110,7 @@
         lap.vmAndHostInfo = [ ];
         lap.vmAndHostAndDatastoreInfo = [ ];
 
-        clearContext ( lap.chart_indicators_context );
+        clearContext ( lap.vm_indicators_context );
         clearContext ( lap.chart_layer2_context );
 
         var virtualMachinesUrl = lap.applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex',
@@ -277,18 +277,21 @@
 
     function computePoint ( arr, point ) {
 
-        var retVal = 0;
+        var retVal = 0, powValIndex, axisTotalUnit,
+            startRange, endRange, rangePct,
+            pixelsToAdd;
 
         try {
-            var totalUnit = lap.axisLength / 10,
-                powValIndex = arr [ 0 ],
-                start = arr [ 1 ],
-                end = arr [ 2 ],
-                diff = end - start,
-                unit = totalUnit / diff,
-                plotPoint = diff / point;
+            axisTotalUnit = lap.axisLength / 10;
+            powValIndex = arr [ 0 ];
+            startRange = arr [ 1 ];
+            endRange = arr [ 2 ];
+            rangePct = ( point - startRange ) / ( endRange - startRange );
+            pixelsToAdd = ( axisTotalUnit * rangePct );
 
-            retVal = Math.floor ( ( ( powValIndex )  * 50 ) + ( unit * ( plotPoint * powValIndex ) ) );
+            console.log ( 'index', powValIndex, 'start', startRange, 'end', endRange, 'point', point, 'rangepct', rangePct, 'pixels', pixelsToAdd );
+
+            retVal = ( axisTotalUnit * powValIndex ) + ( pixelsToAdd );
         }
         catch ( e ) { console.log ( ); retVal = 0; }
 
@@ -325,19 +328,19 @@
 
         for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
 
-            vmObj = lap.vmAndHostAndDatastoreInfo [ i ],
-                    vm = vmObj.vm,
-                    vmuuid = vmObj.uuid,
-                    vmpi = vmObj.priceindex,
-                    vmx = vmObj.x,
-                    vmy = vmObj.y,
-                    host = vmObj.host,
-                    hostpi = vmObj.hostpriceindex,
-                    hostuuid = vmObj.hostuuid,
-                    ds = vmObj.ds,
-                    dspi = vmObj.dspriceindex,
-                    dsuuid = vmObj.dsuuid,
-                    divHTML = divHTML + trStart;
+            vmObj = lap.vmAndHostAndDatastoreInfo [ i ];
+            vm = vmObj.vm;
+            vmuuid = vmObj.uuid;
+            vmpi = vmObj.priceindex;
+            vmx = vmObj.x;
+            vmy = vmObj.y;
+            host = vmObj.host;
+            hostpi = vmObj.hostpriceindex;
+            hostuuid = vmObj.hostuuid;
+            ds = vmObj.ds;
+            dspi = vmObj.dspriceindex;
+            dsuuid = vmObj.dsuuid;
+            divHTML = divHTML + trStart;
 
             if ( vmpi < 1.2345 ) { tdColor = tdStartBlue; }
             else if ( vmpi >= 1.2345 && vmpi < 6.25 ) { tdColor = tdStartGreen; }
@@ -345,7 +348,7 @@
             else if ( vmpi > 25 ) { tdColor = tdStartRed; }
 
             divHTML = divHTML + tdColor +
-                      '<span onmouseover="onSpanMouseEvent ( event, this )"' +
+                      '<span id="vmdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
                       ' onmouseout="onSpanMouseEvent ( event, this )"' +
                       ' onclick="onSpanMouseEvent ( event, this )"' +
                       ' class="unselectable">' +
@@ -360,7 +363,7 @@
             else if ( hostpi > 25 ) { tdColor = tdStartRed; }
 
             divHTML = divHTML + tdColor +
-                    '<span onmouseover="onSpanMouseEvent ( event, this )"' +
+                    '<span id="hostdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
                     ' onmouseout="onSpanMouseEvent ( event, this )"' +
                     ' onclick="onSpanMouseEvent ( event, this )"' +
                     ' class="unselectable">' +
@@ -374,7 +377,7 @@
             else if ( dspi > 25 ) { tdColor = tdStartRed; }
 
             divHTML = divHTML + tdColor +
-                    '<span onmouseover="onSpanMouseEvent ( event, this )"' +
+                    '<span id="dsdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
                     ' onmouseout="onSpanMouseEvent ( event, this )"' +
                     ' onclick="onSpanMouseEvent ( event, this )"' +
                     ' class="unselectable">' +
@@ -390,16 +393,28 @@
 
     function onSpanMouseEvent ( event, span ) {
 
+        var coords,
+            vmPoint, vmx, vmy;
+
         if ( event.type === 'mouseover' ) {
 
-            var vmPoint = jQuery ( span ).find ( '#point' ),
-                coords = vmPoint.text ( ).split ( '|' ),
-                vmx = coords [ 0 ],
+            if ( span.id === 'vmdiv' ) {
+
+                vmPoint = jQuery ( span ).find ( '#point' );
+                coords = vmPoint.text ( ).split ( '|' );
+                vmx = coords [ 0 ];
                 vmy = coords [ 1 ];
 
-            clearContext ( lap.chart_indicators_context );
-            lap.chart_indicators_context.fillStyle = '#ff9900'; // orange
-            lap.chart_indicators_context.fillRect ( vmx - 20, vmy - 20, 40, 40 );
+                clearContext ( lap.vm_indicators_context );
+
+                lap.vm_indicators_context.fillStyle = '#CC66FF';
+                lap.vm_indicators_context.fillRect ( vmx - 1, ( lap.originPoint.y - lap.axisLength ), 3, lap.axisLength );
+                lap.vm_indicators_context.fillRect ( lap.originPoint.x, vmy - 1, lap.axisLength, 3 );
+
+                lap.vm_indicators_context.fillStyle = '#ff9900'; // orange
+                lap.vm_indicators_context.fillRect ( vmx - 20, vmy - 20, 40, 40 );
+
+            }
 
             span.style.borderBottom = span.style.borderTop = '3px solid #ff9900';
         }
@@ -533,18 +548,18 @@
 </script>
 
 <canvas id="chart_background" width="700" height="625" style="position: absolute; z-index: 0;"></canvas>
-<canvas id="chart_indicators" width="700" height="625" style="position: absolute; z-index: 1;"></canvas>
-<canvas id="chart_layer1" width="700" height="625" style="position: absolute; z-index: 2;"></canvas>
-<canvas id="chart_layer2" width="700" height="625" style="position: absolute; z-index: 3;"></canvas>
+<canvas id="vm_indicators" width="700" height="625" style="position: absolute; z-index: 3;"></canvas>
+<canvas id="chart_layer1" width="700" height="625" style="position: absolute; z-index: 4;"></canvas>
+<canvas id="chart_layer2" width="700" height="625" style="position: absolute; z-index: 5;"></canvas>
 
-<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px; z-index: 4;"></div>
+<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px; z-index: 6;"></div>
 
-<div id="controls" style="position: absolute; left: 95px; top: 555px; z-index: 5;">
+<div id="controls" style="position: absolute; left: 95px; top: 555px; z-index: 7;">
     <button id="btnToggleRefresh" onclick="onControlClick ( this )">Stop Refresh</button>
 </div>
 
-<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 6;"></div>
-<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 7;">
+<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 8;"></div>
+<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 9;">
     <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD; font-family: 'Arial'; text-align: center; padding-top: 10px;"></div>
     <div id="modalContentBody" style="width: 400px; height: 565px; font-family: 'Arial';"></div>
     <div id="btnCloseModalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 2px; left: 379px; width: 14px; height: 16px;
