@@ -265,11 +265,13 @@
 
             vmObj.x = lap.originPoint.x + xPoint;
             vmObj.y = lap.originPoint.y - yPoint;
+            vmObj.radius = radius;
+            vmObj.color = determineColor ( vmPI );
 
-            lap.chart_layer2_context.fillStyle = determineColor ( vmPI );
+            lap.chart_layer2_context.fillStyle = vmObj.color;
             lap.chart_layer2_context.strokeStyle = '#000000';
             lap.chart_layer2_context.beginPath();
-            lap.chart_layer2_context.arc ( vmObj.x, vmObj.y, radius, 0, 2 * Math.PI, false );
+            lap.chart_layer2_context.arc ( vmObj.x, vmObj.y, vmObj.radius, 0, 2 * Math.PI, false );
             lap.chart_layer2_context.fill ( );
             lap.chart_layer2_context.stroke ( );
         }
@@ -288,8 +290,6 @@
             endRange = arr [ 2 ];
             rangePct = ( point - startRange ) / ( endRange - startRange );
             pixelsToAdd = ( axisTotalUnit * rangePct );
-
-            console.log ( 'index', powValIndex, 'start', startRange, 'end', endRange, 'point', point, 'rangepct', rangePct, 'pixels', pixelsToAdd );
 
             retVal = ( axisTotalUnit * powValIndex ) + ( pixelsToAdd );
         }
@@ -312,7 +312,7 @@
     function buildDataTable ( ) {
 
         var i, vmObj,
-            vm, vmpi, vmuuid, vmx, vmy,
+            vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
             host, hostpi, hostuuid, ds, dspi, dsuuid,
             trStart = '<tr>', trEnd = '</tr>',
             tdColor, tdEnd = '</td>',
@@ -334,6 +334,8 @@
             vmpi = vmObj.priceindex;
             vmx = vmObj.x;
             vmy = vmObj.y;
+            vmradius = vmObj.radius;
+            vmcolor = vmObj.color;
             host = vmObj.host;
             hostpi = vmObj.hostpriceindex;
             hostuuid = vmObj.hostuuid;
@@ -353,9 +355,14 @@
                       ' onclick="onSpanMouseEvent ( event, this )"' +
                       ' class="unselectable">' +
                       '<b>' + vm + '</b>' +
-                      '<span id="uuid" style="display: none;">' + vmuuid + '</span>' +
-                      '<span id="point" style="display: none;">' + vmx + '|' + vmy + '</span></span>' +
-                      tdEnd + tdColor + vmpi + tdEnd;
+                      '<span id="spandata" style="display: none;">' +
+                            '{ "vmuuid" : "' + vmuuid + '",' +
+                            '"point" : "' + vmx + '|' + vmy + '",' +
+                            '"radius" : "' + vmradius + '",' +
+                            '"hostpi" : "' + hostpi + '",' +
+                            '"dspi" : "' + dspi + '",' +
+                            '"color" : "' + vmcolor + '"}' +
+                      '</span>' + tdEnd + tdColor + vmpi + tdEnd;
 
             if ( hostpi < 1.2345 ) { tdColor = tdStartBlue; }
             else if ( hostpi >= 1.2345 && hostpi < 6.25 ) { tdColor = tdStartGreen; }
@@ -368,7 +375,7 @@
                     ' onclick="onSpanMouseEvent ( event, this )"' +
                     ' class="unselectable">' +
                     '<b>' + host + '</b>' +
-                    '<span id="uuid" style="display: none;">' + hostuuid + '</span></span>' +
+                    '<span id="spandata" style="display: none;">' + hostuuid + '</span></span>' +
                     tdEnd + tdColor + hostpi + tdEnd;
 
             if ( dspi < 1.2345 ) { tdColor = tdStartBlue; }
@@ -382,7 +389,7 @@
                     ' onclick="onSpanMouseEvent ( event, this )"' +
                     ' class="unselectable">' +
                     '<b>' + ds + '</b>' +
-                    '<span id="uuid" style="display: none;">' + dsuuid + '</span></span>' +
+                    '<span id="spandata" style="display: none;">' + dsuuid + '</span></span>' +
                     tdEnd + tdColor + dspi + tdEnd + trEnd;
         }
 
@@ -393,19 +400,26 @@
 
     function onSpanMouseEvent ( event, span ) {
 
-        var coords,
-            vmPoint, vmx, vmy;
+        var coords, spanDataText, spanDataObj,
+            vmPoint, vmx, vmy, vmRadius, vmColor,
+            hostpi, dspi;
 
         if ( event.type === 'mouseover' ) {
 
             if ( span.id === 'vmdiv' ) {
 
-                vmPoint = jQuery ( span ).find ( '#point' );
-                coords = vmPoint.text ( ).split ( '|' );
+                spanDataText = jQuery ( span ).find ( '#spandata' ).text ( );
+                spanDataObj = JSON.parse ( spanDataText );
+
+                vmPoint = spanDataObj.point;
+                vmRadius = spanDataObj.radius;
+                vmColor = spanDataObj.color;
+                hostpi = spanDataObj.hostpi;
+                dspi = spanDataObj.dspi;
+
+                coords = vmPoint.split ( '|' );
                 vmx = coords [ 0 ];
                 vmy = coords [ 1 ];
-
-                clearContext ( lap.vm_indicators_context );
 
                 lap.vm_indicators_context.fillStyle = '#CC66FF';
                 lap.vm_indicators_context.fillRect ( vmx - 1, ( lap.originPoint.y - lap.axisLength ), 3, lap.axisLength );
@@ -414,11 +428,22 @@
                 lap.vm_indicators_context.fillStyle = '#ff9900'; // orange
                 lap.vm_indicators_context.fillRect ( vmx - 20, vmy - 20, 40, 40 );
 
+                console.log ( vmColor, vmRadius );
+                lap.vm_indicators_context.fillStyle = vmColor;
+                lap.vm_indicators_context.strokeStyle = '#000000';
+                lap.vm_indicators_context.beginPath();
+                lap.vm_indicators_context.arc ( vmx, vmy, vmRadius, 0, 2 * Math.PI, false );
+                lap.vm_indicators_context.fill ( );
+                lap.vm_indicators_context.stroke ( );
             }
 
             span.style.borderBottom = span.style.borderTop = '3px solid #ff9900';
         }
         else if ( event.type === 'mouseout' ) {
+
+            if ( span.id === 'vmdiv' ) {
+                clearContext ( lap.vm_indicators_context );
+            }
 
             span.style.borderBottom =  span.style.borderTop = 'none';
         }
@@ -433,7 +458,7 @@
         var ajaxCallCommand,
             xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
             ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
-            vmuuid = jQuery ( span ).find ( '#uuid' ).text (),
+            vmuuid = jQuery ( span ).find ( '#spandata' ).text (),
             notificationsURL = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmuuid + '/notifications';
 
         jQuery ( '#modalWindow' ).css ( { 'display' : 'inline' } );
@@ -548,18 +573,18 @@
 </script>
 
 <canvas id="chart_background" width="700" height="625" style="position: absolute; z-index: 0;"></canvas>
+<canvas id="chart_layer1" width="700" height="625" style="position: absolute; z-index: 1;"></canvas>
+<canvas id="chart_layer2" width="700" height="625" style="position: absolute; z-index: 2;"></canvas>
 <canvas id="vm_indicators" width="700" height="625" style="position: absolute; z-index: 3;"></canvas>
-<canvas id="chart_layer1" width="700" height="625" style="position: absolute; z-index: 4;"></canvas>
-<canvas id="chart_layer2" width="700" height="625" style="position: absolute; z-index: 5;"></canvas>
 
-<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px; z-index: 6;"></div>
+<div id="dataTable" style="position: absolute; left: 650px; top: 25px; font-family: 'Arial'; font-size: 12px; z-index: 4;"></div>
 
-<div id="controls" style="position: absolute; left: 95px; top: 555px; z-index: 7;">
+<div id="controls" style="position: absolute; left: 95px; top: 555px; z-index: 5;">
     <button id="btnToggleRefresh" onclick="onControlClick ( this )">Stop Refresh</button>
 </div>
 
-<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 8;"></div>
-<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 9;">
+<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 6;"></div>
+<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 7;">
     <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD; font-family: 'Arial'; text-align: center; padding-top: 10px;"></div>
     <div id="modalContentBody" style="width: 400px; height: 565px; font-family: 'Arial';"></div>
     <div id="btnCloseModalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 2px; left: 379px; width: 14px; height: 16px;
