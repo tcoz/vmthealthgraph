@@ -594,6 +594,12 @@
             }
             else if ( control.innerText === 'Hide OOZ Set' ) {
 
+                var xslider = document.getElementById ( 'xslider' ),
+                    yslider = document.getElementById ( 'yslider' );
+
+                xslider.value = 75;
+                yslider.value = 130;
+
                 jQuery ( '#greenzoneset' ).css ( { 'display' : 'none' } );
                 control.innerText = 'Show OOZ Set';
 
@@ -602,8 +608,8 @@
         }
     }
 
-    function drawDefaultGreenzone ( )
-    {
+    function drawDefaultGreenzone ( ) {
+
         clearContext ( lap.chart_greenzone_context );
 
         lap.greenzoneOriginPoints = [ 57, 130 ];
@@ -619,17 +625,19 @@
 
         // jquery does not appear capable of selecting the html5 slider
         var yslider = document.getElementById ( 'yslider' ),
-                ysliderVal = parseInt ( yslider.value ),
-                xPos = lap.originPoint.x + ( ysliderVal - 73 ),
-                yPos = lap.originPoint.y - ysliderVal,
-                greenzoneUnder, greenzoneOver, greenzoneCritical;
+            xslider = document.getElementById ( 'xslider' ),
+            ysliderVal = parseInt ( yslider.value ),
+            xsliderVal = parseInt ( xslider.value),
+            xPos = lap.originPoint.x + ysliderVal,
+            yPos = lap.originPoint.y - ( ysliderVal + xsliderVal ),
+            greenzoneUnder, greenzoneOver, greenzoneCritical;
 
         lap.chart_greenzone_context.fillStyle = '#c3ffc0';
-        lap.chart_greenzone_context.fillRect ( xPos, yPos, 75, 75 );
+        lap.chart_greenzone_context.fillRect ( xPos, yPos, xsliderVal, xsliderVal );
 
-        greenzoneUnder = computePriceIndexFromPoint ( ysliderVal - 75 );
-        greenzoneOver = computePriceIndexFromPoint ( ysliderVal ); // original bounds was 75 wide/tall
-        greenzoneCritical = computePriceIndexFromPoint ( ysliderVal ) + 18.75; // the diff of the original from over to critical was 18.75
+        greenzoneUnder = computePriceIndexFromPoint ( ysliderVal );
+        greenzoneOver = computePriceIndexFromPoint ( ysliderVal + xsliderVal );
+        greenzoneCritical = greenzoneOver + 18.75; // the diff of the original from over to critical was 18.75
 
         lap.greenzone = [ greenzoneUnder, greenzoneOver, greenzoneCritical ];
     }
@@ -659,7 +667,8 @@
 </div>
 
 <div id="greenzoneset" width="700" height="625" style="position: absolute; display: none; top: 45px; left: 10px; z-index: 9;">
-    <input id="yslider" type="range" max="500" value="130" width="10" style="position: absolute; top: 18px; left: 35px; height: 511px; -webkit-appearance: slider-vertical" onchange="onSliderChange ( this )" />
+    <input id="xslider" type="range" min="75" max="250" value="75" width="10" style="position: absolute; top: 17px; left: 260px; width: 175px;" onchange="onSliderChange ( this )" />
+    <input id="yslider" type="range" max="500" value="55" width="10" style="position: absolute; top: 18px; left: 35px; height: 511px; -webkit-appearance: slider-vertical" onchange="onSliderChange ( this )" />
 </div>
 
 <div id="rawData" class="rawDataStyle"></div>
