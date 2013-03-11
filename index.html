@@ -604,6 +604,8 @@
 
     function drawDefaultGreenzone ( )
     {
+        clearContext ( lap.chart_greenzone_context );
+
         lap.greenzoneOriginPoints = [ 57, 130 ];
         lap.greenzone = [ 1.2345, 6.25, 25 ];
         lap.chart_greenzone_context.fillStyle = '#c3ffc0';
