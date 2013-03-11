@@ -458,16 +458,17 @@
         }
         else if ( event.type === 'click' ) {
 
-            createNotificationsDialog ( span );
+            createRelatedDataDialog ( span );
         }
     }
 
-    function createNotificationsDialog ( span ) {
+    function createRelatedDataDialog ( span ) {
 
-        var ajaxCallCommand,
-                xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
-                ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
-                uuid;
+        var ajaxCallCommandNotifications, ajaxCallCommandAuditLog,
+            notificationsURL, auditLogURL,
+            xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
+            ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
+            uuid;
 
         if ( span.id === 'vmdiv' ) {
 
@@ -481,48 +482,60 @@
         }
 
         notificationsURL = lap.applianceAddress + 'markets/Market/virtualmachines/' + uuid + '/notifications';
+        auditLogURL = lap.applianceAddress + 'markets/Market/entities/' + uuid + '/auditentries';
 
         jQuery ( '#modalWindow' ).css ( { 'display' : 'inline' } );
         jQuery ( '#modalContent' ).css ( { 'display' : 'inline', 'left' : xpos, 'top' : ypos } );
         jQuery ( '#modalContentTitle' ).html ( 'Notifications: ' + span.innerText );
 
-        ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
-        ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                                                      { 'destination' : notificationsURL, 'callback' : onNotificationsReturn, 'data' : { } }
+        ajaxCallCommandNotifications = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+        ajaxCallCommandNotifications.dispatchCommandNotification ( 'AJAX_CALL',
+                { 'destination' : notificationsURL, 'callback' : onRelatedDataReturn, 'data' : { 'callName' : 'notifications' } }
         );
+
+        ajaxCallCommandAuditLog = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+        ajaxCallCommandAuditLog.dispatchCommandNotification ( 'AJAX_CALL',
+                { 'destination' : auditLogURL, 'callback' : onRelatedDataReturn, 'data' : { 'callName' : 'auditlog' } }
+        );
+
     }
 
-    function onNotificationsReturn ( dataObj ) {
+    function onRelatedDataReturn ( dataObj ) {
 
-        var xmlDoc,
-                notificationElements;
+        var xmlDoc, elements;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
 
-        notificationElements = jQuery ( xmlDoc ).find ( 'Notification' );
-        populateModalContent ( notificationElements );
+        if ( dataObj.data.callName === 'notifications' ) { elements = jQuery ( xmlDoc ).find ( 'Notification' ); }
+        else if ( dataObj.data.callName === 'auditlog' ) { elements = jQuery ( xmlDoc ).find ( 'audit-log-entry' ); }
+
+        populateModalContent ( elements, dataObj.data.callName );
     }
 
-    function populateModalContent ( notificationElements ) {
+    function populateModalContent ( elements, whichCall ) {
 
-        var i, notification,
-                event, lastNotified, severity,
-                divBGColor, divHTML = "";
+        var i, item,
+            event, time, severity,
+            timeElement, actionnameElement, categoryElement, usernameElement,
+            timeElement, actionname, category, username,
+            divBGColor, divHTML = "";
 
-        if ( notificationElements.length === 0 ) {
-            divHTML = '<div style="padding: 5px;">No notifications for this entity.</div>';
-        }
-        else {
+        console.log ( whichCall );
 
-            for ( i = 0; i < notificationElements.length; i++ ) {
+        if ( whichCall === 'notifications' ) {
 
-                for ( i = 0; i < notificationElements.length; i++ ) {
+            if ( elements.length === 0 ) {
+                divHTML = '<div style="padding: 5px;">No items for this entity.</div>';
+            }
+            else {
 
-                    notification = notificationElements [ i ];
-                    event = jQuery ( notification ).attr ( 'event' );
-                    lastNotified = jQuery ( notification ).attr ( 'lastNotified' );
-                    severity = jQuery ( notification ).attr ( 'severity' ).toLowerCase ( );
+                for ( i = 0; i < elements.length; i++ ) {
+
+                    item = elements [ i ];
+                    event = jQuery ( item ).attr ( 'event' );
+                    time = jQuery ( item ).attr ( 'lastNotified' );
+                    severity = jQuery ( item ).attr ( 'severity' ).toLowerCase ( );
 
 
                     divBGColor = '#c3ffc0'; // green, normal
@@ -532,12 +545,51 @@
 
                     divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: ' +
                             divBGColor + ';"><b>Severity: </b>' + severity +
-                            '<br /><b>Last Notified: </b>' + new Date ( lastNotified * 1000 ) + '<br /><b>Event: </b>' + event + '</div>';
+                            '<br /><b>Last Notified: </b>' + new Date ( time * 1000 ) +
+                            '<br /><b>Event: </b>' + event + '</div>';
                 }
+            }
+
+            jQuery ( '#modalContentBodyNotifications' ).html ( divHTML );
+        }
+        else if ( whichCall === 'auditlog' ) {
+
+            for ( i = 0; i < elements.length; i++ ) {
+
+                item = elements [ i ];
+                actionnameElement = jQuery ( item ).find ( 'action-name' );
+                timeElement = jQuery ( item ).find ( 'created-at' );
+                categoryElement = jQuery ( item ).find ( 'category' );
+                usernameElement = jQuery ( item ).find ( 'user-name' );
+
+                divBGColor = '#ffccff'; // light violet
+
+                divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: ' +
+                        divBGColor + ';"><b>Category: </b>' + categoryElement.text ( ) +
+                        ', <b>User: </b>' + usernameElement.text ( ) +
+                        '<br /><b>Creation Time: </b>' + new Date ( parseInt ( timeElement.text ( ) ) * 1000 ) +
+                        '<br /><b>Action Name: </b>' + actionnameElement.text ( ) + '</div>';
             }
         }
 
-        jQuery ( '#modalContentBody' ).html ( divHTML );
+        jQuery ( '#modalContentBodyAuditLog' ).html ( divHTML );
+    }
+
+    function onModalWindowTabClick ( tab ) {
+
+        var notificationsBody = jQuery ( '#modalContentBodyNotifications'),
+            auditLogBody = jQuery ( '#modalContentBodyAuditLog' );
+
+        if ( tab.id === 'tabNotifications' ) {
+
+            notificationsBody.css ( { 'display' : 'inline' } );
+            auditLogBody.css ( { 'display' : 'none' } );
+        }
+        else if ( tab.id === 'tabAuditLog' ) {
+
+            notificationsBody.css ( { 'display' : 'none' } );
+            auditLogBody.css ( { 'display' : 'inline' } );
+        }
     }
 
     function turnIntoCSV ( chartData ) {
@@ -661,7 +713,15 @@
 <div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 1px; left: 1px; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 7;"></div>
 <div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 8;">
     <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD; font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;"></div>
-    <div id="modalContentBody" style="width: 400px; height: 565px; font-family: 'Arial';"></div>
+
+    <div id="modalContentTabs" style="width: 400px; height: 35px; background-color: #FFFFFF; font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;">
+        <span id="tabNotifications" style="width: 125px; height: 35px; padding: 5px; background-color: #d0e4fd; border: 1px solid black;" onClick="onModalWindowTabClick ( this )">Notifications</span>
+        <span id="tabAuditLog" style="width: 125px; height: 35px; padding: 5px; background-color: #d0e4fd; border: 1px solid black;" onClick="onModalWindowTabClick ( this )">Audit Log</span>
+    </div>
+
+    <div id="modalContentBodyNotifications" style="width: 400px; height: 400px; font-family: 'Arial'; float: right; overflow: auto;"></div>
+    <div id="modalContentBodyAuditLog" style="width: 400px; height: 400px; font-family: 'Arial'; display: none; float: right; overflow: auto;"></div>
+
     <div id="btnCloseModalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 2px; left: 379px; width: 14px; height: 16px;
          background-color: #FFFFFF; border: 2px solid black; text-align: center; font-family: 'Arial'; font-size: 14px; font-weight: bold;"><span class="unselectable">X</span></div>
 </div>
