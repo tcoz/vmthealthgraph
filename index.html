@@ -17,15 +17,15 @@
 
 <script type="text/javascript">
 
-// tcoz Framework and local app namespaces.
-// Don't delete or change these.
+    // tcoz Framework and local app namespaces.
+    // Don't delete or change these.
     var tcoz = { },
-        lap = { };
+            lap = { };
 
     jQuery ( document ).ready ( function ( ) {
 
         lap = {
-            applianceAddress : 'http://localhost:8400/vmturbo/api/',
+            applianceAddress : 'http://10.10.172.50/vmturbo/api/',
             chart_background : jQuery ( '#chart_background' ).get ( 0 ),
             chart_greenzone : jQuery ( '#chart_greenzone' ).get ( 0 ),
             vm_indicators : jQuery ( '#vm_indicators' ).get ( 0 ),
@@ -118,7 +118,7 @@
         clearContext ( lap.chart_layer2_context );
 
         var virtualMachinesUrl = lap.applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex',
-            ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+                ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
 
         ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
                                                       { 'destination' : virtualMachinesUrl, 'callback' : onStartupCallsReturn }
@@ -128,9 +128,9 @@
     function onStartupCallsReturn ( dataObj ) {
 
         var i, ajaxCallCommand,
-               xmlDoc,
-               virtualMachines, vmElement, vmObj, vmDisplayName, vmPriceIndex, vmUUID,
-               hostCallUrl;
+                xmlDoc,
+                virtualMachines, vmElement, vmObj, vmDisplayName, vmPriceIndex, vmUUID,
+                hostCallUrl;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
@@ -155,7 +155,7 @@
 
             ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
             ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
+                                                          { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
             );
         }
     }
@@ -187,11 +187,11 @@
             for ( i = 0; i < lap.vmAndHostInfo.length; i += 1 ) {
                 vmAndHostObj = lap.vmAndHostInfo [ i ];
                 dsCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmAndHostObj.uuid +
-                            '/datastores?property=priceIndex';
+                        '/datastores?property=priceIndex';
 
                 ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
                 ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                    { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
+                                                              { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
                 );
             }
         }
@@ -200,8 +200,8 @@
     function onDataStoreCallsReturn ( dataObj ) {
 
         var xmlDoc,
-            vmAndHostObj,
-            dsElement, dsDisplayName, dsPriceIndex, dsuuid;
+                vmAndHostObj,
+                dsElement, dsDisplayName, dsPriceIndex, dsuuid;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
@@ -234,11 +234,11 @@
         for ( i = 0; i < chartData.length; i++ ) {
 
             var vmObj = chartData [ i ],
-                vmPI = vmObj.priceindex,
-                hostPI = vmObj.hostpriceindex,
-                dsPI = vmObj.dspriceindex,
-                xAxisPoints, yAxisPoints, xPoint, yPoint,
-                radius = 1;
+                    vmPI = vmObj.priceindex,
+                    hostPI = vmObj.hostpriceindex,
+                    dsPI = vmObj.dspriceindex,
+                    xAxisPoints, yAxisPoints, xPoint, yPoint,
+                    radius = 1;
 
             for ( j = 0; j < lap.powVals.length; j++ ) {
 
@@ -284,8 +284,8 @@
     function computePoint ( arr, priceIndex ) {
 
         var retVal = 0, powValIndex, axisTotalUnit,
-            startRange, endRange, rangePct,
-            pixelsToAdd;
+                startRange, endRange, rangePct,
+                pixelsToAdd;
 
         axisTotalUnit = lap.axisLength / 10;
         powValIndex = arr [ 0 ];
@@ -316,7 +316,7 @@
     function determineColor ( priceindex, colorType ) {
 
         var retVal,
-            colorVals = [ '#0000FF', '#00FF00', '#FFFF00', '#FF0000' ];
+                colorVals = [ '#0000FF', '#00FF00', '#FFFF00', '#FF0000' ];
 
         if ( colorType === 'pastel' ) {
             colorVals = [ '#d0e4fd', '#c3ffc0', '#fffd93', '#ffc0c0' ];
@@ -334,14 +334,14 @@
     function buildDataTable ( ) {
 
         var i, vmObj,
-            vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
-            host, hostpi, hostuuid, ds, dspi, dsuuid,
-            trStart = '<tr>', trEnd = '</tr>',
-            tdStart = '<td bgcolor="', tdEnd = '</td>', tdColor,
-            divHTML = '<table cellspacing="2" cellpadding="2">' +
-                      '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
-                      '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
-                      '</tr>';
+                vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
+                host, hostpi, hostuuid, ds, dspi, dsuuid,
+                trStart = '<tr>', trEnd = '</tr>',
+                tdStart = '<td bgcolor="', tdEnd = '</td>', tdColor,
+                divHTML = '<table cellspacing="2" cellpadding="2">' +
+                        '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
+                        '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
+                        '</tr>';
 
 
         for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
@@ -365,19 +365,19 @@
             tdColor = tdStart + determineColor ( vmpi, 'pastel' ) + '">';
 
             divHTML = divHTML + tdColor +
-                      '<span id="vmdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
-                      ' onmouseout="onSpanMouseEvent ( event, this )"' +
-                      ' onclick="onSpanMouseEvent ( event, this )"' +
-                      ' class="unselectable">' +
-                      '<b>' + vm + '</b>' +
-                      '<span id="spandata" style="display: none;">' +
-                            '{ "vmuuid" : "' + vmuuid + '",' +
-                            '"point" : "' + vmx + '|' + vmy + '",' +
-                            '"radius" : "' + vmradius + '",' +
-                            '"hostpi" : "' + hostpi + '",' +
-                            '"dspi" : "' + dspi + '",' +
-                            '"color" : "' + vmcolor + '"}' +
-                      '</span>' + tdEnd + tdColor + vmpi + tdEnd;
+                    '<span id="vmdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
+                    ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                    ' onclick="onSpanMouseEvent ( event, this )"' +
+                    ' class="unselectable">' +
+                    '<b>' + vm + '</b>' +
+                    '<span id="spandata" style="display: none;">' +
+                    '{ "vmuuid" : "' + vmuuid + '",' +
+                    '"point" : "' + vmx + '|' + vmy + '",' +
+                    '"radius" : "' + vmradius + '",' +
+                    '"hostpi" : "' + hostpi + '",' +
+                    '"dspi" : "' + dspi + '",' +
+                    '"color" : "' + vmcolor + '"}' +
+                    '</span>' + tdEnd + tdColor + vmpi + tdEnd;
 
             tdColor = tdStart + determineColor ( hostpi, 'pastel' ) + '">';
 
@@ -410,8 +410,8 @@
     function onSpanMouseEvent ( event, span ) {
 
         var coords, spanDataText, spanDataObj,
-            vmPoint, vmx, vmy, vmRadius, vmColor,
-            hostpi, dspi;
+                vmPoint, vmx, vmy, vmRadius, vmColor,
+                hostpi, dspi;
 
         if ( event.type === 'mouseover' ) {
 
@@ -465,10 +465,24 @@
     function createNotificationsDialog ( span ) {
 
         var ajaxCallCommand,
-            xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
-            ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
-            vmuuid = jQuery ( span ).find ( '#spandata' ).text (),
-            notificationsURL = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmuuid + '/notifications';
+                xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
+                ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
+                uuid;
+
+        if ( span.id === 'vmdiv' ) {
+
+            spanDataText = jQuery ( span ).find ( '#spandata' ).text ( );
+            spanDataObj = JSON.parse ( spanDataText );
+            uuid = spanDataObj.vmuuid;
+        }
+        else {
+
+            uuid = jQuery ( span ).find ( '#spandata' ).text ( );
+        }
+
+        notificationsURL = lap.applianceAddress + 'markets/Market/virtualmachines/' + uuid + '/notifications';
+
+        console.log ( notificationsURL );
 
         jQuery ( '#modalWindow' ).css ( { 'display' : 'inline' } );
         jQuery ( '#modalContent' ).css ( { 'display' : 'inline', 'left' : xpos, 'top' : ypos } );
@@ -476,14 +490,14 @@
 
         ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
         ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-            { 'destination' : notificationsURL, 'callback' : onNotificationsReturn, 'data' : { } }
+                                                      { 'destination' : notificationsURL, 'callback' : onNotificationsReturn, 'data' : { } }
         );
     }
 
     function onNotificationsReturn ( dataObj ) {
 
         var xmlDoc,
-            notificationElements;
+                notificationElements;
 
         try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
         catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
@@ -495,8 +509,8 @@
     function populateModalContent ( notificationElements ) {
 
         var i, notification,
-            event, lastNotified, severity,
-            divBGColor, divHTML = "";
+                event, lastNotified, severity,
+                divBGColor, divHTML = "";
 
         if ( notificationElements.length === 0 ) {
             divHTML = '<div style="padding: 5px;">No notifications for this entity.</div>';
@@ -519,8 +533,8 @@
                     else if ( severity === 'minor' ) { divBGColor = '#fffd93'; }
 
                     divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: ' +
-                              divBGColor + ';"><b>Severity: </b>' + severity +
-                              '<br /><b>Last Notified: </b>' + new Date ( lastNotified * 1000 ) + '<br /><b>Event: </b>' + event + '</div>';
+                            divBGColor + ';"><b>Severity: </b>' + severity +
+                            '<br /><b>Last Notified: </b>' + new Date ( lastNotified * 1000 ) + '<br /><b>Event: </b>' + event + '</div>';
                 }
             }
         }
@@ -538,7 +552,7 @@
             obj = chartData [ i ];
             str = str + '<div>';
             str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' +
-                  obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
+                    obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
             str = str + '</div>';
         }
 
@@ -605,10 +619,10 @@
 
         // jquery does not appear capable of selecting the html5 slider
         var yslider = document.getElementById ( 'yslider' ),
-            ysliderVal = parseInt ( yslider.value ),
-            xPos = lap.originPoint.x + ( ysliderVal - 73 ),
-            yPos = lap.originPoint.y - ysliderVal,
-            greenzoneUnder, greenzoneOver, greenzoneCritical;
+                ysliderVal = parseInt ( yslider.value ),
+                xPos = lap.originPoint.x + ( ysliderVal - 73 ),
+                yPos = lap.originPoint.y - ysliderVal,
+                greenzoneUnder, greenzoneOver, greenzoneCritical;
 
         lap.chart_greenzone_context.fillStyle = '#c3ffc0';
         lap.chart_greenzone_context.fillRect ( xPos, yPos, 75, 75 );
