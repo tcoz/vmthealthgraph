@@ -60,11 +60,15 @@
 
         var i, xPoint, yPoint;
 
-        lap.powVals.push ( 0 );
+        // lap.powVals.push ( 0 );
 
+        /* These are even factors from 1 - 20000, which I originally used
         for ( i = 0; i < 10; i++ ) {
             lap.powVals.push ( Math.floor ( Math.pow ( 10, ( i * 0.477893 ) ) ) );
         }
+        */
+        // These are the ones I was asked to use
+        lap.powVals = [ 1.00, 1.23, 1.56, 2.04, 2.78, 4.00, 6.25, 11.11, 25.00, 100.00, 20000.00 ];
 
         drawDefaultGreenzone ( );
 
@@ -709,7 +713,8 @@
 <canvas id="chart_layer2" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 3;"></canvas>
 <canvas id="vm_indicators" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 4;"></canvas>
 
-<div id="dataTable" style="position: absolute; left: 660px; top: 50px; font-family: 'Arial'; font-size: 10px; z-index: 5; background-color: #FFFFFF"></div>
+<div id="dataTable" style="position: absolute; left: 660px; top: 50px; height: 555px; width: 570px;
+     font-family: 'Arial'; font-size: 10px; z-index: 5; background-color: #FFFFFF; float: right; overflow: auto;"></div>
 
 <div id="controls" style="position: absolute; left: 95px; top: 600px; z-index: 6;">
     <button id="btnToggleRefresh" onclick="onControlClick ( this )">Stop Refresh</button>
@@ -718,7 +723,8 @@
 
 <div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 1px; left: 1px; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 7;"></div>
 <div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 8;">
-    <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD; font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;">
+    <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD;
+         font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;">
         <span id="titleType"></span>
         <span id="titleEntity"></span>
     </div>
