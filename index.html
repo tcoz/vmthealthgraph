@@ -31,6 +31,7 @@
             vm_indicators : jQuery ( '#vm_indicators' ).get ( 0 ),
             chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
             chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
+            chart_selectorbox : jQuery ( '#chart_selectorbox' ).get ( 0 ),
             greenzone : [ 1.2345, 6.25, 25 ],
             powVals : [ ],
             axisLength : 500,
@@ -38,7 +39,10 @@
             vmAndHostInfo : [ ],
             vmAndHostAndDatastoreInfo : [ ],
             intervalHandle : -1,
-            greenzoneOriginPoints : [ ]
+            greenzoneOriginPoints : [ ],
+            trackMove : false,
+            selectorMouseDownPoint : { },
+            selectorMouseUpPoint : { }
         };
 
         lap.chart_background_context = lap.chart_background.getContext ( '2d' );
@@ -46,6 +50,7 @@
         lap.vm_indicators_context = lap.vm_indicators.getContext ( '2d' );
         lap.chart_layer1_context = lap.chart_layer1.getContext ( '2d' );
         lap.chart_layer2_context = lap.chart_layer2.getContext ( '2d' );
+        lap.chart_selectorbox_context = lap.chart_selectorbox.getContext ( '2d' );
         lap.originPoint = { 'x' : 100, 'y' : lap.chart_layer1.height - 100 };
         lap.greenzoneOriginPoints = [ 57, 130 ];
 
@@ -120,6 +125,7 @@
 
         clearContext ( lap.vm_indicators_context );
         clearContext ( lap.chart_layer2_context );
+        clearContext ( lap.chart_selectorbox_context );
 
         var virtualMachinesUrl = lap.applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex',
                 ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
@@ -225,24 +231,24 @@
 
         plotVM ( [ vmAndHostObj ] );
 
-        if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
+        // if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
             // var str = JSON.stringify ( lap.vmAndHostAndDatastoreInfo );
             // jQuery ( '#rawData' ).text ( str );
             // turnIntoCSV ( lap.vmAndHostAndDatastoreInfo );
-            buildDataTable ( );
-        }
+            // buildDataTable ( lap.vmAndHostAndDatastoreInfo );
+       // }
     }
 
-    function plotVM ( chartData ) {
+    function plotVM ( vmData ) {
 
-        for ( i = 0; i < chartData.length; i++ ) {
+        for ( i = 0; i < vmData.length; i++ ) {
 
-            var vmObj = chartData [ i ],
-                    vmPI = vmObj.priceindex,
-                    hostPI = vmObj.hostpriceindex,
-                    dsPI = vmObj.dspriceindex,
-                    xAxisPoints, yAxisPoints, xPoint, yPoint,
-                    radius = 1;
+            var vmObj = vmData [ i ],
+                vmPI = vmObj.priceindex,
+                hostPI = vmObj.hostpriceindex,
+                dsPI = vmObj.dspriceindex,
+                xAxisPoints, yAxisPoints, xPoint, yPoint,
+                radius = 1;
 
             for ( j = 0; j < lap.powVals.length; j++ ) {
 
@@ -287,9 +293,9 @@
 
     function computePoint ( arr, priceIndex ) {
 
-        var retVal = 0, powValIndex, axisTotalUnit,
-                startRange, endRange, rangePct,
-                pixelsToAdd;
+        var retVal, powValIndex, axisTotalUnit,
+            startRange, endRange, rangePct,
+            pixelsToAdd;
 
         axisTotalUnit = lap.axisLength / 10;
         powValIndex = arr [ 0 ];
@@ -305,16 +311,14 @@
 
     function computePriceIndexFromPoint ( point ) {
 
-        var retVal = 0;
         var index = Math.floor ( point / 50 );
         var pixelsInExcess = point % 50;
         var pctAxisUnit = pixelsInExcess / 50;
         var start =  lap.powVals [ index ];
         var end =  lap.powVals [ index + 1 ];
         var diff = end - start;
-        var priceIndex = start + ( diff * pctAxisUnit );
 
-        return priceIndex;
+        return  start + ( diff * pctAxisUnit ); // priceIndex
     }
 
     function determineColor ( priceindex, colorType ) {
@@ -335,22 +339,22 @@
         return retVal;
     }
 
-    function buildDataTable ( ) {
+    function buildDataTable ( chartData ) {
 
         var i, vmObj,
-                vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
-                host, hostpi, hostuuid, ds, dspi, dsuuid,
-                trStart = '<tr>', trEnd = '</tr>',
-                tdStart = '<td bgcolor="', tdEnd = '</td>', tdColor,
-                divHTML = '<table cellspacing="2" cellpadding="2">' +
-                        '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
-                        '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
-                        '</tr>';
+            vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
+            host, hostpi, hostuuid, ds, dspi, dsuuid,
+            trStart = '<tr>', trEnd = '</tr>',
+            tdStart = '<td bgcolor="', tdEnd = '</td>', tdColor,
+            divHTML = '<table cellspacing="2" cellpadding="2">' +
+                    '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
+                    '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
+                    '</tr>';
 
 
-        for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
+        for ( i = 0; i < chartData.length; i++ ) {
 
-            vmObj = lap.vmAndHostAndDatastoreInfo [ i ];
+            vmObj = chartData [ i ];
             vm = vmObj.vm;
             vmuuid = vmObj.uuid;
             vmpi = vmObj.priceindex;
@@ -528,7 +532,7 @@
         var i, item,
             event, time, severity,
             timeElement, actionnameElement, categoryElement, usernameElement,
-            timeElement, actionname, category, username,
+            category,
             divBGColor, divHTML = "";
 
         if ( whichCall === 'notifications' ) {
@@ -681,7 +685,7 @@
                                                lap.originPoint.y - lap.greenzoneOriginPoints [ 1 ], 75, 74 );
     }
 
-    function onSliderChange ( slider ) {
+    function onSliderChange ( ) {
 
         clearContext ( lap.chart_greenzone_context );
 
@@ -704,25 +708,85 @@
         lap.greenzone = [ greenzoneUnder, greenzoneOver, greenzoneCritical ];
     }
 
+    function onSelectorBoxMouseEvent ( ) {
+
+        if ( event.type === 'mousedown' ) {
+            lap.trackMove = true;
+            clearContext ( lap.chart_selectorbox_context );
+            lap.selectorMouseDownPoint = { 'xPos' : event.pageX, 'yPos' : event.pageY };
+        }
+        else if ( event.type === 'mousemove' ) {
+            if ( lap.trackMove === true ) {
+                drawSelectorRect ( );
+            }
+        }
+        else if ( event.type === 'mouseup' ) {
+            lap.trackMove = false;
+            lap.selectorMouseUpPoint = { 'xPos' : event.pageX, 'yPos' : event.pageY };
+            findVMs ( );
+        }
+    }
+
+    function drawSelectorRect ( ) {
+
+        var top = 70, left = 110,
+            width = event.pageX - lap.selectorMouseDownPoint.xPos,
+            height =  event.pageY - lap.selectorMouseDownPoint.yPos;
+
+        clearContext ( lap.chart_selectorbox_context );
+
+        lap.chart_selectorbox_context.strokeStyle = '#0000FF';
+        lap.chart_selectorbox_context.strokeRect ( lap.selectorMouseDownPoint.xPos - left,
+                                                   lap.selectorMouseDownPoint.yPos - top,
+                                                   width, height );
+    }
+
+    function findVMs ( ) {
+
+        var i, vmObj,
+            top = 45, left = 10,
+            chartData = [ ];
+
+        for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
+            vmObj = lap.vmAndHostAndDatastoreInfo [ i ];
+
+            if ( ( ( vmObj.x + left ) >= lap.selectorMouseDownPoint.xPos && ( vmObj.x + left ) <= lap.selectorMouseUpPoint.xPos ) &&
+                 ( ( vmObj.y + top ) >= lap.selectorMouseDownPoint.yPos && ( vmObj.y + top ) <= lap.selectorMouseUpPoint.yPos ) ) {
+
+                chartData.push ( vmObj );
+            }
+        }
+
+        buildDataTable ( chartData );
+    }
+
 </script>
 
 <div id="header" class="roundedcorners" style="background-color: #FFFFFF; padding: 2px; width: 1222px;"><img src="images/vmturbo_logo.png" /></div>
 <canvas id="chart_background" width="1222" height="590" class="roundedcorners" style="position: absolute; top: 45px; left: 10px; z-index: 0; background-color: #FFFFFF"></canvas>
+
 <canvas id="chart_greenzone" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 1;"></canvas>
 <canvas id="chart_layer1" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 2;"></canvas>
 <canvas id="chart_layer2" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 3;"></canvas>
 <canvas id="vm_indicators" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 4;"></canvas>
 
 <div id="dataTable" style="position: absolute; left: 660px; top: 50px; height: 555px; width: 570px;
-     font-family: 'Arial'; font-size: 10px; z-index: 5; background-color: #FFFFFF; float: right; overflow: auto;"></div>
+     font-family: 'Arial'; font-size: 10px; background-color: #FFFFFF; float: right; overflow: auto; z-index: 5; "></div>
 
 <div id="controls" style="position: absolute; left: 95px; top: 600px; z-index: 6;">
     <button id="btnToggleRefresh" onclick="onControlClick ( this )">Stop Refresh</button>
     <button id="btnToggleGreenzoneSet" onclick="onControlClick ( this )">Show OOZ Set</button>
 </div>
 
-<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 1px; left: 1px; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 7;"></div>
-<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 8;">
+<canvas id="chart_selectorbox" width="500" height="500" onmousedown="onSelectorBoxMouseEvent ( )"
+        onmouseup="onSelectorBoxMouseEvent ( )"
+        onmousemove="onSelectorBoxMouseEvent ( )"
+        style="position: absolute; top: 70px; left: 110px; z-index: 7;">
+
+</canvas>
+
+<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 1px; left: 1px; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 8;"></div>
+<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 9;">
     <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD;
          font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;">
         <span id="titleType"></span>
@@ -741,10 +805,11 @@
          background-color: #FFFFFF; border: 2px solid black; text-align: center; font-family: 'Arial'; font-size: 14px; font-weight: bold;"><span class="unselectable">X</span></div>
 </div>
 
-<div id="greenzoneset" width="700" height="625" style="position: absolute; display: none; top: 45px; left: 10px; z-index: 9;">
+<div id="greenzoneset" width="700" height="625" style="position: absolute; display: none; top: 45px; left: 10px; z-index: 10;">
     <input id="xslider" type="range" min="75" max="250" value="75" width="10" style="position: absolute; top: 17px; left: 260px; width: 175px;" onchange="onSliderChange ( this )" />
-    <input id="yslider" type="range" max="500" value="55" width="10" style="position: absolute; top: 18px; left: 35px; height: 511px; -webkit-appearance: slider-vertical" onchange="onSliderChange ( this )" />
+    <input id="yslider" type="range" max="500" value="55" width="10" style="position: absolute; top: 18px; left: 35px; height: 511px; -webkit-appearance: slider-vertical" onchange="onSliderChange ( )" />
 </div>
+
 
 <div id="rawData" class="rawDataStyle"></div>
 
