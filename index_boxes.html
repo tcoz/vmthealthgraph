@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/html">
+
+<head>
+    <title>VMTurbo Entity Graph</title>
+
+    <link rel="stylesheet" href="css/main.css">
+    <script src="js/libs/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="js/libs/tcoz/jsbase/jsbase.js"></script>
+    <script type="text/javascript" src="js/libs/tcoz/jsbase/singletons_jsbase.js"></script>
+    <script type="text/javascript" src="js/libs/tcoz/jsbase/commands_jsbase.js"></script>
+    <script type="text/javascript" src="js/libs/tcoz/jsbase/utils_jsbase.js"></script>
+</head>
+
+<body>
+
+<script type="text/javascript">
+
+    // tcoz Framework and local app namespaces.
+    // Don't delete or change these.
+    var tcoz = { },
+            lap = { };
+
+    jQuery ( document ).ready ( function ( ) {
+
+        lap = {
+            applianceAddress : 'http://localhost:8400/vmturbo/api/',
+            chart_background : jQuery ( '#chart_background' ).get ( 0 ),
+            chart_greenzone : jQuery ( '#chart_greenzone' ).get ( 0 ),
+            vm_indicators : jQuery ( '#vm_indicators' ).get ( 0 ),
+            chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
+            chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
+            chart_selectorbox : jQuery ( '#chart_selectorbox' ).get ( 0 ),
+            greenzone : [ 1.2345, 6.25, 25 ],
+            powVals : [ ],
+            axisLength : 500,
+            vmInfo : [ ],
+            vmAndHostInfo : [ ],
+            vmAndHostAndDatastoreInfo : [ ],
+            intervalHandle : -1,
+            greenzoneOriginPoints : [ ],
+            trackMove : false,
+            selectorMouseDownPoint : { },
+            selectorMouseUpPoint : { }
+        };
+
+        lap.chart_background_context = lap.chart_background.getContext ( '2d' );
+        lap.chart_greenzone_context = lap.chart_greenzone.getContext ( '2d' );
+        lap.vm_indicators_context = lap.vm_indicators.getContext ( '2d' );
+        lap.chart_layer1_context = lap.chart_layer1.getContext ( '2d' );
+        lap.chart_layer2_context = lap.chart_layer2.getContext ( '2d' );
+        lap.chart_selectorbox_context = lap.chart_selectorbox.getContext ( '2d' );
+        lap.originPoint = { 'x' : 100, 'y' : lap.chart_layer1.height - 100 };
+        lap.greenzoneOriginPoints = [ 57, 130 ];
+
+        lap.intervalHandle = setInterval ( startApp, 30000 );
+
+        drawBaseChart ( );
+        startApp ( );
+
+    } );
+
+    function drawBaseChart ( ) {
+
+        var i, xPoint, yPoint;
+
+        // lap.powVals.push ( 0 );
+
+        /* These are even factors from 1 - 20000, which I originally used
+        for ( i = 0; i < 10; i++ ) {
+            lap.powVals.push ( Math.floor ( Math.pow ( 10, ( i * 0.477893 ) ) ) );
+        }
+        */
+        // These are the ones I was asked to use
+        lap.powVals = [ 1.00, 1.23, 1.56, 2.04, 2.78, 4.00, 6.25, 11.11, 25.00, 100.00, 20000.00 ];
+
+        drawDefaultGreenzone ( );
+
+        lap.chart_layer1_context.strokeStyle = '#000000';
+
+        lap.chart_layer1_context.beginPath ( );
+        lap.chart_layer1_context.moveTo ( lap.originPoint.x, lap.originPoint.y  );
+        lap.chart_layer1_context.lineTo ( lap.originPoint.x + lap.axisLength, lap.originPoint.y );
+        lap.chart_layer1_context.stroke ( );
+
+        lap.chart_layer1_context.beginPath ( );
+        lap.chart_layer1_context.moveTo ( lap.originPoint.x, lap.originPoint.y  );
+        lap.chart_layer1_context.lineTo ( lap.originPoint.x, lap.originPoint.y - lap.axisLength );
+        lap.chart_layer1_context.stroke ( );
+
+        lap.chart_layer1_context.font = 'bold 14px sans-serif';
+        lap.chart_layer1_context.fillStyle = '#000000';
+        lap.chart_layer1_context.fillText ( 'DS UI', 10, 300 );
+        lap.chart_layer1_context.fillText ( 'HOST UI', 295, 570 );
+
+        lap.chart_layer1_context.font = '10px sans-serif';
+
+        for ( i = 0; i < lap.powVals.length; i++ ) {
+
+            xPoint = lap.originPoint.x + ( i * ( lap.axisLength / 10 ) );
+            yPoint = lap.originPoint.y - ( i * ( lap.axisLength / 10 ) );
+
+            lap.chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), xPoint, lap.originPoint.y + 15 );
+            lap.chart_layer1_context.fillText ( lap.powVals [ i ].toString ( ), lap.originPoint.x - 40, yPoint );
+
+            lap.chart_layer1_context.strokeStyle = '#666666';
+            lap.chart_layer1_context.beginPath ( );
+            lap.chart_layer1_context.moveTo ( xPoint, lap.originPoint.y );
+            lap.chart_layer1_context.lineTo ( xPoint, lap.originPoint.y - lap.axisLength );
+            lap.chart_layer1_context.stroke ( );
+
+            lap.chart_layer1_context.beginPath ( );
+            lap.chart_layer1_context.moveTo ( lap.originPoint.x, yPoint );
+            lap.chart_layer1_context.lineTo ( lap.originPoint.x + lap.axisLength, yPoint );
+            lap.chart_layer1_context.stroke ( );
+        }
+    }
+
+    function startApp ( ) {
+
+        lap.vmInfo = [ ];
+        lap.vmAndHostInfo = [ ];
+        lap.vmAndHostAndDatastoreInfo = [ ];
+
+        clearContext ( lap.vm_indicators_context );
+        clearContext ( lap.chart_layer2_context );
+        clearContext ( lap.chart_selectorbox_context );
+
+        var virtualMachinesUrl = lap.applianceAddress + 'markets/Market/entities?classname=VirtualMachine&property=priceIndex',
+                ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+
+        ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+                                                      { 'destination' : virtualMachinesUrl, 'callback' : onStartupCallsReturn }
+        );
+    }
+
+    function onStartupCallsReturn ( dataObj ) {
+
+        var i, ajaxCallCommand,
+                xmlDoc,
+                virtualMachines, vmElement, vmObj, vmDisplayName, vmPriceIndex, vmUUID,
+                hostCallUrl;
+
+        try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
+        catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
+
+        virtualMachines = jQuery ( xmlDoc ).find ( 'ServiceEntity' );
+
+        if ( virtualMachines.length > 0 ) {
+
+            for ( i = 0; i < virtualMachines.length; i += 1 ) {
+                vmElement = virtualMachines [ i ];
+                vmDisplayName = jQuery ( vmElement ).attr ( 'displayName' );
+                vmPriceIndex = jQuery ( vmElement ).attr ( 'priceIndex' );
+                vmUUID = jQuery ( vmElement ).attr ( 'uuid' );
+
+                lap.vmInfo.push ( { 'vm' : vmDisplayName, 'priceindex' : vmPriceIndex, 'uuid' : vmUUID } );
+            }
+        }
+
+        for ( i = 0; i < lap.vmInfo.length; i += 1 ) {
+            vmObj = lap.vmInfo [ i ];
+            hostCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmObj.uuid + '/hosts?property=priceIndex';
+
+            ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+            ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+                                                          { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
+            );
+        }
+    }
+
+    function onHostsCallsReturn ( dataObj ) {
+
+        var i, ajaxCallCommand,
+                xmlDoc,
+                vmObj, vmAndHostObj,
+                hostElement, hostDisplayName, hostPriceIndex, hostUUID;
+
+        try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
+        catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
+
+        hostElement = jQuery ( xmlDoc ).find ( 'ServiceEntity' );
+        hostDisplayName = jQuery ( hostElement ).attr ( 'displayName' );
+        hostPriceIndex = jQuery ( hostElement ).attr ( 'priceIndex' );
+        hostUUID = jQuery ( hostElement ).attr ( 'uuid' );
+
+        vmObj = dataObj.data;
+        vmObj.host =  hostDisplayName;
+        vmObj.hostpriceindex = hostPriceIndex;
+        vmObj.hostuuid = hostUUID;
+
+        lap.vmAndHostInfo.push ( vmObj );
+
+        if ( lap.vmAndHostInfo.length === lap.vmInfo.length ) {
+
+            for ( i = 0; i < lap.vmAndHostInfo.length; i += 1 ) {
+                vmAndHostObj = lap.vmAndHostInfo [ i ];
+                dsCallUrl = lap.applianceAddress + 'markets/Market/virtualmachines/' + vmAndHostObj.uuid +
+                        '/datastores?property=priceIndex';
+
+                ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+                ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
+                                                              { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
+                );
+            }
+        }
+    }
+
+    function onDataStoreCallsReturn ( dataObj ) {
+
+        var xmlDoc,
+                vmAndHostObj,
+                dsElement, dsDisplayName, dsPriceIndex, dsuuid;
+
+        try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
+        catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
+
+        dsElement = jQuery ( xmlDoc ).find ( 'ServiceEntity' );
+        dsDisplayName = jQuery ( dsElement ).attr ( 'displayName' );
+        dsPriceIndex = jQuery ( dsElement ).attr ( 'priceIndex' );
+        dsuuid = jQuery ( dsElement ).attr ( 'uuid' );
+
+        vmAndHostObj = dataObj.data;
+        vmAndHostObj.ds = dsDisplayName;
+        vmAndHostObj.dspriceindex = dsPriceIndex;
+        vmAndHostObj.dsuuid = dsuuid;
+
+        // this is your bank, essentially.
+        lap.vmAndHostAndDatastoreInfo.push ( vmAndHostObj );
+
+        plotVM ( [ vmAndHostObj ] );
+
+        if ( lap.vmAndHostAndDatastoreInfo.length === lap.vmInfo.length ) {
+            var str = JSON.stringify ( lap.vmAndHostAndDatastoreInfo );
+            jQuery ( '#rawData' ).text ( str );
+            // turnIntoCSV ( lap.vmAndHostAndDatastoreInfo );
+            // buildDataTable ( lap.vmAndHostAndDatastoreInfo );
+       }
+    }
+
+    function plotVM ( vmData ) {
+
+        for ( i = 0; i < vmData.length; i++ ) {
+
+            var vmObj = vmData [ i ],
+                vmPI = vmObj.priceindex,
+                hostPI = vmObj.hostpriceindex,
+                dsPI = vmObj.dspriceindex,
+                xAxisPoints, yAxisPoints, xPoint, yPoint,
+                radius = 1;
+
+            for ( j = 0; j < lap.powVals.length; j++ ) {
+
+                if ( hostPI >= lap.powVals [ j ] && hostPI < lap.powVals [ j + 1 ] ) {
+                    xAxisPoints = [ j, lap.powVals [ j ], lap.powVals [ j + 1 ] ];
+                    j = lap.powVals.length;
+                }
+            }
+
+            for ( j = 0; j < lap.powVals.length; j++ ) {
+
+                if ( dsPI >= lap.powVals [ j ] && dsPI < lap.powVals [ j + 1 ] ) {
+                    yAxisPoints = [ j, lap.powVals [ j ], lap.powVals [ j + 1 ] ];
+                    j = lap.powVals.length;
+                }
+            }
+
+            for ( j = 0; j < lap.powVals.length; j++ ) {
+
+                if ( vmPI >= lap.powVals [ j ] && vmPI < lap.powVals [ j + 1 ] ) {
+                    radius = ( j + 1 ) * 2;
+                    j = lap.powVals.length;
+                }
+            }
+
+            xPoint = computePoint ( xAxisPoints, hostPI );
+            yPoint = computePoint ( yAxisPoints, dsPI );
+
+            vmObj.x = lap.originPoint.x + xPoint;
+            vmObj.y = lap.originPoint.y - yPoint;
+            vmObj.radius = radius;
+            vmObj.color = determineColor ( vmPI, 'hard' );
+
+            lap.chart_layer2_context.fillStyle = vmObj.color;
+            lap.chart_layer2_context.strokeStyle = '#000000';
+            lap.chart_layer2_context.beginPath();
+            lap.chart_layer2_context.arc ( vmObj.x, vmObj.y, vmObj.radius, 0, 2 * Math.PI, false );
+            lap.chart_layer2_context.fill ( );
+            lap.chart_layer2_context.stroke ( );
+        }
+    }
+
+    function computePoint ( arr, priceIndex ) {
+
+        var retVal, powValIndex, axisTotalUnit,
+            startRange, endRange, rangePct,
+            pixelsToAdd;
+
+        axisTotalUnit = lap.axisLength / 10;
+        powValIndex = arr [ 0 ];
+        startRange = arr [ 1 ];
+        endRange = arr [ 2 ];
+        rangePct = ( priceIndex - startRange ) / ( endRange - startRange );
+        pixelsToAdd = ( axisTotalUnit * rangePct );
+
+        retVal = ( axisTotalUnit * powValIndex ) + ( pixelsToAdd );
+
+        return retVal;
+    }
+
+    function computePriceIndexFromPoint ( point ) {
+
+        var index = Math.floor ( point / 50 );
+        var pixelsInExcess = point % 50;
+        var pctAxisUnit = pixelsInExcess / 50;
+        var start =  lap.powVals [ index ];
+        var end =  lap.powVals [ index + 1 ];
+        var diff = end - start;
+
+        return  start + ( diff * pctAxisUnit ); // priceIndex
+    }
+
+    function determineColor ( priceindex, colorType ) {
+
+        var retVal,
+                colorVals = [ '#0000FF', '#00FF00', '#FFFF00', '#FF0000' ];
+
+        if ( colorType === 'pastel' ) {
+            colorVals = [ '#d0e4fd', '#c3ffc0', '#fffd93', '#ffc0c0' ];
+        }
+
+        retVal = colorVals [ 0 ];
+
+        if ( priceindex >= lap.greenzone [ 0 ] && priceindex < lap.greenzone [ 1 ] ) { retVal = colorVals [ 1 ]; }
+        else if ( priceindex >= lap.greenzone [ 1 ] && priceindex < lap.greenzone [ 2 ] ) { retVal = colorVals [ 2 ]; }
+        else if ( priceindex > lap.greenzone [ 2 ] ) { retVal = colorVals [ 3 ]; }
+
+        return retVal;
+    }
+
+    function buildDataTable ( chartData ) {
+
+        var i, vmObj,
+            vm, vmpi, vmuuid, vmx, vmy, vmradius, vmcolor,
+            host, hostpi, hostuuid, ds, dspi, dsuuid,
+            trStart = '<tr>', trEnd = '</tr>',
+            tdStart = '<td bgcolor="', tdEnd = '</td>', tdColor,
+            divHTML = '<table cellspacing="2" cellpadding="2">' +
+                    '<tr style="background-color: #DDDDDD; font-weight: bold;">' +
+                    '<td>VM Name</td><td>VM PI</td><td>Host</td><td>Host PI</td><td>DataStore</td><td>DS PI</td>' +
+                    '</tr>';
+
+
+        for ( i = 0; i < chartData.length; i++ ) {
+
+            vmObj = chartData [ i ];
+            vm = vmObj.vm;
+            vmuuid = vmObj.uuid;
+            vmpi = vmObj.priceindex;
+            vmx = vmObj.x;
+            vmy = vmObj.y;
+            vmradius = vmObj.radius;
+            vmcolor = vmObj.color;
+            host = vmObj.host;
+            hostpi = vmObj.hostpriceindex;
+            hostuuid = vmObj.hostuuid;
+            ds = vmObj.ds;
+            dspi = vmObj.dspriceindex;
+            dsuuid = vmObj.dsuuid;
+            divHTML = divHTML + trStart;
+
+            tdColor = tdStart + determineColor ( vmpi, 'pastel' ) + '">';
+
+            divHTML = divHTML + tdColor +
+                    '<span id="vmdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
+                    ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                    ' onclick="onSpanMouseEvent ( event, this )"' +
+                    ' class="unselectable">' +
+                    '<b>' + vm + '</b>' +
+                    '<span id="spandata" style="display: none;">' +
+                    '{ "vmuuid" : "' + vmuuid + '",' +
+                    '"point" : "' + vmx + '|' + vmy + '",' +
+                    '"radius" : "' + vmradius + '",' +
+                    '"hostpi" : "' + hostpi + '",' +
+                    '"dspi" : "' + dspi + '",' +
+                    '"color" : "' + vmcolor + '"}' +
+                    '</span>' + tdEnd + tdColor + vmpi + tdEnd;
+
+            tdColor = tdStart + determineColor ( hostpi, 'pastel' ) + '">';
+
+            divHTML = divHTML + tdColor +
+                    '<span id="hostdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
+                    ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                    ' onclick="onSpanMouseEvent ( event, this )"' +
+                    ' class="unselectable">' +
+                    '<b>' + host + '</b>' +
+                    '<span id="spandata" style="display: none;">' + hostuuid + '</span>' +
+                    tdEnd + tdColor + hostpi + tdEnd;
+
+            tdColor = tdStart + determineColor ( dspi, 'pastel' ) + '">';
+
+            divHTML = divHTML + tdColor +
+                    '<span id="dsdiv" onmouseover="onSpanMouseEvent ( event, this )"' +
+                    ' onmouseout="onSpanMouseEvent ( event, this )"' +
+                    ' onclick="onSpanMouseEvent ( event, this )"' +
+                    ' class="unselectable">' +
+                    '<b>' + ds + '</b>' +
+                    '<span id="spandata" style="display: none;">' + dsuuid + '</span>' +
+                    tdEnd + tdColor + dspi + tdEnd + trEnd;
+        }
+
+        divHTML = divHTML + '</table>';
+
+        jQuery ( '#dataTable' ).html ( divHTML );
+    }
+
+    function onSpanMouseEvent ( event, span ) {
+
+        var coords, spanDataText, spanDataObj,
+                vmPoint, vmx, vmy, vmRadius, vmColor,
+                hostpi, dspi;
+
+        if ( event.type === 'mouseover' ) {
+
+            if ( span.id === 'vmdiv' ) {
+
+                spanDataText = jQuery ( span ).find ( '#spandata' ).text ( );
+                spanDataObj = JSON.parse ( spanDataText );
+
+                vmPoint = spanDataObj.point;
+                vmRadius = spanDataObj.radius;
+                vmColor = spanDataObj.color;
+                hostpi = spanDataObj.hostpi;
+                dspi = spanDataObj.dspi;
+
+                coords = vmPoint.split ( '|' );
+                vmx = coords [ 0 ];
+                vmy = coords [ 1 ];
+
+                lap.vm_indicators_context.fillStyle = determineColor ( hostpi );
+                lap.vm_indicators_context.fillRect ( vmx - 1, ( lap.originPoint.y - lap.axisLength ), 3, lap.axisLength );
+                lap.vm_indicators_context.fillStyle = determineColor ( dspi );
+                lap.vm_indicators_context.fillRect ( lap.originPoint.x, vmy - 1, lap.axisLength, 3 );
+
+                lap.vm_indicators_context.fillStyle = '#ff9900'; // orange
+                lap.vm_indicators_context.fillRect ( vmx - 20, vmy - 20, 40, 40 );
+
+                lap.vm_indicators_context.fillStyle = vmColor;
+                lap.vm_indicators_context.strokeStyle = '#000000';
+                lap.vm_indicators_context.beginPath();
+                lap.vm_indicators_context.arc ( vmx, vmy, vmRadius, 0, 2 * Math.PI, false );
+                lap.vm_indicators_context.fill ( );
+                lap.vm_indicators_context.stroke ( );
+            }
+
+            span.style.borderBottom = span.style.borderTop = '3px solid #ff9900';
+        }
+        else if ( event.type === 'mouseout' ) {
+
+            if ( span.id === 'vmdiv' ) {
+                clearContext ( lap.vm_indicators_context );
+            }
+
+            span.style.borderBottom =  span.style.borderTop = 'none';
+        }
+        else if ( event.type === 'click' ) {
+
+            createRelatedDataDialog ( span );
+        }
+    }
+
+    function createRelatedDataDialog ( span ) {
+
+        var ajaxCallCommandNotifications, ajaxCallCommandAuditLog,
+            notificationsURL, auditLogURL, spanDataText, spanDataObj,
+            xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
+            ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
+            uuid,
+            notificationsBody = jQuery ( '#modalContentBodyNotifications'),
+            auditLogBody = jQuery ( '#modalContentBodyAuditLog' );
+
+        notificationsBody.css ( { 'display' : 'inline' } );
+        auditLogBody.css ( { 'display' : 'none' } );
+
+        if ( span.id === 'vmdiv' ) {
+
+            spanDataText = jQuery ( span ).find ( '#spandata' ).text ( );
+            spanDataObj = JSON.parse ( spanDataText );
+            uuid = spanDataObj.vmuuid;
+        }
+        else {
+
+            uuid = jQuery ( span ).find ( '#spandata' ).text ( );
+        }
+
+        notificationsURL = lap.applianceAddress + 'markets/Market/virtualmachines/' + uuid + '/notifications';
+        auditLogURL = lap.applianceAddress + 'markets/Market/entities/' + uuid + '/auditentries';
+
+        jQuery ( '#modalWindow' ).css ( { 'display' : 'inline' } );
+        jQuery ( '#modalContent' ).css ( { 'display' : 'inline', 'left' : xpos, 'top' : ypos } );
+        jQuery ( '#titleType' ).text ( 'Notifications: ' );
+        jQuery ( '#titleEntity').text ( span.innerText );
+
+        ajaxCallCommandNotifications = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+        ajaxCallCommandNotifications.dispatchCommandNotification ( 'AJAX_CALL',
+                { 'destination' : notificationsURL, 'callback' : onRelatedDataReturn, 'data' : { 'callName' : 'notifications' } }
+        );
+
+        ajaxCallCommandAuditLog = ( tcoz.ajaxCallCommand = baseCommand ( ) );
+        ajaxCallCommandAuditLog.dispatchCommandNotification ( 'AJAX_CALL',
+                { 'destination' : auditLogURL, 'callback' : onRelatedDataReturn, 'data' : { 'callName' : 'auditlog' } }
+        );
+
+    }
+
+    function onRelatedDataReturn ( dataObj ) {
+
+        var xmlDoc, elements;
+
+        try { xmlDoc = jQuery.parseXML ( dataObj.ajaxReturn ); }
+        catch ( err ) { xmlDoc = jQuery.parseXML ( '<root />' ); }
+
+        if ( dataObj.data.callName === 'notifications' ) { elements = jQuery ( xmlDoc ).find ( 'Notification' ); }
+        else if ( dataObj.data.callName === 'auditlog' ) { elements = jQuery ( xmlDoc ).find ( 'audit-log-entry' ); }
+
+        populateModalContent ( elements, dataObj.data.callName );
+    }
+
+    function populateModalContent ( elements, whichCall ) {
+
+        var i, item,
+            event, time, severity,
+            timeElement, actionnameElement, categoryElement, usernameElement,
+            category,
+            divBGColor, divHTML = "";
+
+        if ( whichCall === 'notifications' ) {
+
+            if ( elements.length === 0 ) {
+                divHTML = '<div style="padding: 5px;">No items for this entity.</div>';
+            }
+            else {
+
+                for ( i = 0; i < elements.length; i++ ) {
+
+                    item = elements [ i ];
+                    event = jQuery ( item ).attr ( 'event' );
+                    time = jQuery ( item ).attr ( 'lastNotified' );
+                    severity = jQuery ( item ).attr ( 'severity' ).toLowerCase ( );
+
+
+                    divBGColor = '#c3ffc0'; // green, normal
+                    if ( severity === 'critical' ) { divBGColor = '#ffc0c0'; }
+                    else if ( severity === 'major' ) { divBGColor = '#ff9900'; }
+                    else if ( severity === 'minor' ) { divBGColor = '#fffd93'; }
+
+                    divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: ' +
+                            divBGColor + ';"><b>Severity: </b>' + severity +
+                            '<br /><b>Last Notified: </b>' + new Date ( time * 1000 ) +
+                            '<br /><b>Event: </b>' + event + '</div>';
+                }
+            }
+
+            jQuery ( '#modalContentBodyNotifications' ).html ( divHTML );
+        }
+        else if ( whichCall === 'auditlog' ) {
+
+            for ( i = 0; i < elements.length; i++ ) {
+
+                item = elements [ i ];
+                actionnameElement = jQuery ( item ).find ( 'action-name' );
+                timeElement = jQuery ( item ).find ( 'created-at' );
+                categoryElement = jQuery ( item ).find ( 'category' );
+                usernameElement = jQuery ( item ).find ( 'user-name' );
+
+                divBGColor = '#ffccff'; // light violet
+
+                divHTML = divHTML + '<div style="padding: 5px; font-size: 12px; border: 2px solid white; background-color: ' +
+                        divBGColor + ';"><b>Category: </b>' + categoryElement.text ( ) +
+                        ', <b>User: </b>' + usernameElement.text ( ) +
+                        '<br /><b>Creation Time: </b>' + new Date ( parseInt ( timeElement.text ( ) ) * 1000 ) +
+                        '<br /><b>Action Name: </b>' + actionnameElement.text ( ) + '</div>';
+            }
+        }
+
+        jQuery ( '#modalContentBodyAuditLog' ).html ( divHTML );
+    }
+
+    function onModalWindowTabClick ( tab ) {
+
+        var notificationsBody = jQuery ( '#modalContentBodyNotifications'),
+            auditLogBody = jQuery ( '#modalContentBodyAuditLog' );
+
+        if ( tab.id === 'tabNotifications' ) {
+
+            jQuery ( '#titleType' ).html ( 'Notifications: ' );
+            notificationsBody.css ( { 'display' : 'inline' } );
+            auditLogBody.css ( { 'display' : 'none' } );
+        }
+        else if ( tab.id === 'tabAuditLog' ) {
+
+            jQuery ( '#titleType' ).html ( 'Audit Log: ' );
+            notificationsBody.css ( { 'display' : 'none' } );
+            auditLogBody.css ( { 'display' : 'inline' } );
+        }
+    }
+
+    function turnIntoCSV ( chartData ) {
+
+        var i, str, obj;
+
+        str = '<div>vm,uuid,host,ds,priceindex,hostpriceindex,dspriceindex</div>';
+
+        for ( i = 0; i < chartData.length; i += 1 ) {
+            obj = chartData [ i ];
+            str = str + '<div>';
+            str = str + obj.vm + ',' + obj.uuid + ',' + obj.host + ',' + obj.ds + ',' +
+                    obj.priceindex + ',' + obj.hostpriceindex + ',' + obj.dspriceindex;
+            str = str + '</div>';
+        }
+
+        jQuery ( '#rawData' ).html ( str );
+    }
+
+    function clearContext ( context ) {
+
+        context.setTransform ( 1, 0, 0, 1, 0, 0 );
+        context.clearRect ( 0, 0, lap.chart_layer1.width, lap.chart_layer1.height );
+        context.restore ( );
+    }
+
+    function onControlClick ( control ) {
+
+        if ( control.id === 'btnToggleRefresh' ) {
+
+            if ( lap.intervalHandle != null ) {
+                clearInterval ( lap.intervalHandle );
+                lap.intervalHandle = null;
+                control.innerText = 'Start Refresh';
+            }
+            else {
+                lap.intervalHandle = setInterval ( startApp, 30000 );
+                control.innerText = 'Stop Refresh';
+            }
+        }
+        else if ( control.id === 'btnCloseModalWindow' || control.id === 'modalWindow'  ) {
+
+            jQuery ( '#modalWindow' ).css ( { 'display' : 'none' } );
+            jQuery ( '#modalContent' ).css ( { 'display' : 'none' } );
+            jQuery ( '#titleType' ).html ( '' );
+            jQuery ( '#titleEntity' ).html ( '' );
+        }
+        else if ( control.id === 'btnToggleGreenzoneSet' ) {
+
+            if ( control.innerText === 'Show OOZ Set' ) {
+
+                jQuery ( '#greenzoneset' ).css ( { 'display' : 'inline' } );
+                control.innerText = 'Hide OOZ Set';
+            }
+            else if ( control.innerText === 'Hide OOZ Set' ) {
+
+                var xslider = document.getElementById ( 'xslider' ),
+                    yslider = document.getElementById ( 'yslider' );
+
+                xslider.value = 75;
+                yslider.value = 130;
+
+                jQuery ( '#greenzoneset' ).css ( { 'display' : 'none' } );
+                control.innerText = 'Show OOZ Set';
+
+                drawDefaultGreenzone ( );
+            }
+        }
+    }
+
+    function drawDefaultGreenzone ( ) {
+
+        clearContext ( lap.chart_greenzone_context );
+
+        lap.greenzoneOriginPoints = [ 57, 130 ];
+        lap.greenzone = [ 1.2345, 6.25, 25 ];
+        lap.chart_greenzone_context.fillStyle = '#c3ffc0';
+        lap.chart_greenzone_context.fillRect ( lap.originPoint.x + lap.greenzoneOriginPoints [ 0 ],
+                                               lap.originPoint.y - lap.greenzoneOriginPoints [ 1 ], 75, 74 );
+    }
+
+    function onSliderChange ( ) {
+
+        clearContext ( lap.chart_greenzone_context );
+
+        // jquery does not appear capable of selecting the html5 slider
+        var yslider = document.getElementById ( 'yslider' ),
+            xslider = document.getElementById ( 'xslider' ),
+            ysliderVal = parseInt ( yslider.value ),
+            xsliderVal = parseInt ( xslider.value),
+            xPos = lap.originPoint.x + ysliderVal,
+            yPos = lap.originPoint.y - ( ysliderVal + xsliderVal ),
+            greenzoneUnder, greenzoneOver, greenzoneCritical;
+
+        lap.chart_greenzone_context.fillStyle = '#c3ffc0';
+        lap.chart_greenzone_context.fillRect ( xPos, yPos, xsliderVal, xsliderVal );
+
+        greenzoneUnder = computePriceIndexFromPoint ( ysliderVal );
+        greenzoneOver = computePriceIndexFromPoint ( ysliderVal + xsliderVal );
+        greenzoneCritical = greenzoneOver + 18.75; // the diff of the original from over to critical was 18.75
+
+        lap.greenzone = [ greenzoneUnder, greenzoneOver, greenzoneCritical ];
+    }
+
+    function onSelectorBoxMouseEvent ( ) {
+
+        if ( event.type === 'mousedown' ) {
+            lap.trackMove = true;
+            clearContext ( lap.chart_selectorbox_context );
+            lap.selectorMouseDownPoint = { 'xPos' : event.pageX, 'yPos' : event.pageY };
+        }
+        else if ( event.type === 'mousemove' ) {
+            if ( lap.trackMove === true ) {
+                drawSelectorRect ( );
+            }
+        }
+        else if ( event.type === 'mouseup' ) {
+            lap.trackMove = false;
+            lap.selectorMouseUpPoint = { 'xPos' : event.pageX, 'yPos' : event.pageY };
+            findVMs ( );
+        }
+    }
+
+    function drawSelectorRect ( ) {
+
+        var top = 70, left = 110,
+            width = event.pageX - lap.selectorMouseDownPoint.xPos,
+            height =  event.pageY - lap.selectorMouseDownPoint.yPos;
+
+        clearContext ( lap.chart_selectorbox_context );
+
+        lap.chart_selectorbox_context.strokeStyle = '#0000FF';
+        lap.chart_selectorbox_context.strokeRect ( lap.selectorMouseDownPoint.xPos - left,
+                                                   lap.selectorMouseDownPoint.yPos - top,
+                                                   width, height );
+    }
+
+    function findVMs ( ) {
+
+        var i, vmObj,
+            top = 45, left = 10,
+            chartData = [ ];
+
+        for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
+            vmObj = lap.vmAndHostAndDatastoreInfo [ i ];
+
+            if ( ( ( vmObj.x + left ) >= lap.selectorMouseDownPoint.xPos && ( vmObj.x + left ) <= lap.selectorMouseUpPoint.xPos ) &&
+                 ( ( vmObj.y + top ) >= lap.selectorMouseDownPoint.yPos && ( vmObj.y + top ) <= lap.selectorMouseUpPoint.yPos ) ) {
+
+                chartData.push ( vmObj );
+            }
+        }
+
+        buildDataTable ( chartData );
+    }
+
+</script>
+
+<div id="header" class="roundedcorners" style="background-color: #FFFFFF; padding: 2px; width: 1222px;"><img src="images/vmturbo_logo.png" /></div>
+<canvas id="chart_background" width="1222" height="590" class="roundedcorners" style="position: absolute; top: 45px; left: 10px; z-index: 0; background-color: #FFFFFF"></canvas>
+
+<canvas id="chart_greenzone" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 1;"></canvas>
+<canvas id="chart_layer1" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 2;"></canvas>
+<canvas id="chart_layer2" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 3;"></canvas>
+<canvas id="vm_indicators" width="700" height="625" style="position: absolute; top: 45px; left: 10px; z-index: 4;"></canvas>
+
+<div id="dataTable" style="position: absolute; left: 660px; top: 50px; height: 555px; width: 570px;
+     font-family: 'Arial'; font-size: 10px; background-color: #FFFFFF; float: right; overflow: auto; z-index: 5; "></div>
+
+<div id="controls" style="position: absolute; left: 95px; top: 600px; z-index: 6;">
+    <button id="btnToggleRefresh" onclick="onControlClick ( this )">Stop Refresh</button>
+    <button id="btnToggleGreenzoneSet" onclick="onControlClick ( this )">Show OOZ Set</button>
+</div>
+
+<canvas id="chart_selectorbox" width="500" height="500" onmousedown="onSelectorBoxMouseEvent ( )"
+        onmouseup="onSelectorBoxMouseEvent ( )"
+        onmousemove="onSelectorBoxMouseEvent ( )"
+        style="position: absolute; top: 70px; left: 110px; z-index: 7;">
+
+</canvas>
+
+<div id="modalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 1px; left: 1px; width: 100%; height: 100%; display: none; background-color: #FFFFFF; opacity: .7; z-index: 8;"></div>
+<div id="modalContent" style="position: absolute; width: 400px; height: 500px; display: none; border: 2px solid black; background-color: white; z-index: 9;">
+    <div id="modalContentTitle" style="width: 400px; height: 35px; background-color: #DDDDDD;
+         font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;">
+        <span id="titleType"></span>
+        <span id="titleEntity"></span>
+    </div>
+
+    <div id="modalContentTabs" style="width: 400px; height: 35px; background-color: #FFFFFF; font-family: 'Arial'; font-size: 14px; font-weight: bold; text-align: center; padding-top: 10px;">
+        <span id="tabNotifications" style="width: 125px; height: 35px; padding: 5px; background-color: #d0e4fd; border: 1px solid black;" onClick="onModalWindowTabClick ( this )">Notifications</span>
+        <span id="tabAuditLog" style="width: 125px; height: 35px; padding: 5px; background-color: #d0e4fd; border: 1px solid black;" onClick="onModalWindowTabClick ( this )">Audit Log</span>
+    </div>
+
+    <div id="modalContentBodyNotifications" style="width: 400px; height: 400px; font-family: 'Arial'; float: right; overflow: auto;"></div>
+    <div id="modalContentBodyAuditLog" style="width: 400px; height: 400px; font-family: 'Arial'; display: none; float: right; overflow: auto;"></div>
+
+    <div id="btnCloseModalWindow" onclick="onControlClick ( this )" style="position: absolute; top: 2px; left: 379px; width: 14px; height: 16px;
+         background-color: #FFFFFF; border: 2px solid black; text-align: center; font-family: 'Arial'; font-size: 14px; font-weight: bold;"><span class="unselectable">X</span></div>
+</div>
+
+<div id="greenzoneset" width="700" height="625" style="position: absolute; display: none; top: 45px; left: 10px; z-index: 10;">
+    <input id="xslider" type="range" min="75" max="250" value="75" width="10" style="position: absolute; top: 17px; left: 260px; width: 175px;" onchange="onSliderChange ( this )" />
+    <input id="yslider" type="range" max="500" value="55" width="10" style="position: absolute; top: 18px; left: 35px; height: 511px; -webkit-appearance: slider-vertical" onchange="onSliderChange ( )" />
+</div>
+
+
+<div id="rawData" class="rawDataStyle" style="top: 700px"></div>
+
+</body>
+
+</html>

@@ -314,8 +314,8 @@
         var index = Math.floor ( point / 50 );
         var pixelsInExcess = point % 50;
         var pctAxisUnit = pixelsInExcess / 50;
-        var start =  lap.powVals [ index ];
-        var end =  lap.powVals [ index + 1 ];
+        var start =  lap.powVals [ index_bubbles ];
+        var end =  lap.powVals [ index_bubbles + 1 ];
         var diff = end - start;
 
         return  start + ( diff * pctAxisUnit ); // priceIndex
