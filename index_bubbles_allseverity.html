@@ -32,8 +32,6 @@ jQuery ( document ).ready ( function ( ) {
         chart_layer1 : jQuery ( '#chart_layer1' ).get ( 0 ),
         chart_layer2 : jQuery ( '#chart_layer2' ).get ( 0 ),
         chart_selectorbox : jQuery ( '#chart_selectorbox' ).get ( 0 ),
-        xAxisParam : 'host',
-        yAxisParm : 'datastore',
         greenzone : [ 1.2345, 6.25, 25 ],
         powVals : [ ],
         colorVals : [ '#3399ff', '#00FF00', '#FFFC17', '#FF0000' ],
@@ -170,12 +168,12 @@ function onStartupCallsReturn ( dataObj ) {
 
         ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
         ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                { 'destination' : hostCallUrl, 'callback' : onXAxisCallsReturn, 'data' : vmObj }
+                { 'destination' : hostCallUrl, 'callback' : onHostsCallsReturn, 'data' : vmObj }
         );
     }
 }
 
-function onXAxisCallsReturn ( dataObj ) {
+function onHostsCallsReturn ( dataObj ) {
 
     var i, ajaxCallCommand,
             xmlDoc,
@@ -206,13 +204,13 @@ function onXAxisCallsReturn ( dataObj ) {
 
             ajaxCallCommand = ( tcoz.ajaxCallCommand = baseCommand ( ) );
             ajaxCallCommand.dispatchCommandNotification ( 'AJAX_CALL',
-                    { 'destination' : dsCallUrl, 'callback' : onYAxisCallsReturn, 'data' : vmAndHostObj }
+                    { 'destination' : dsCallUrl, 'callback' : onDataStoreCallsReturn, 'data' : vmAndHostObj }
             );
         }
     }
 }
 
-function onYAxisCallsReturn ( dataObj ) {
+function onDataStoreCallsReturn ( dataObj ) {
 
     var xmlDoc,
             vmAndHostObj,
@@ -376,20 +374,14 @@ function organizeData ( vmArray ) {
 function plotVMSectors ( populatedRanges ) {
 
     var i, j, each,
-        xPos, yPos,
-        split, vmsArray,
+        vmsArray,
         vmsBySeverity, currentSeverityVMs,
         testSevereVM, mostSevereVM,
         totalRadius;
 
     for ( each in populatedRanges ) {
 
-        if ( populatedRanges.hasOwnProperty ( each ) ) {
-
-            split = each.split ( '_' );
-            xPos = Number ( split [ 0 ] );
-            yPos = Number ( split [ 1 ] );
-            totalRadius = 2;
+       if ( populatedRanges.hasOwnProperty ( each ) ) {
 
             vmsArray = populatedRanges [ each ];
 
@@ -408,16 +400,16 @@ function plotVMSectors ( populatedRanges ) {
                 else {
                     vmsBySeverity [ 3 ].push ( vmsArray [ i ] );
                 }
-
-                totalRadius = ( totalRadius < 25 ? totalRadius + 1 : totalRadius );
             }
 
-            for ( i = 0; i < vmsBySeverity.length; i++ ) {
+           for ( i = 0; i < vmsBySeverity.length; i++ ) {
 
                 if ( vmsBySeverity [ i ].length > 0 ) {
 
                     currentSeverityVMs = vmsBySeverity [ i ];
                     mostSevereVM = currentSeverityVMs [ 0 ];
+
+                    totalRadius = 2;
 
                     for ( j = 0; j < currentSeverityVMs.length; j++ ) {
 
@@ -426,19 +418,21 @@ function plotVMSectors ( populatedRanges ) {
                         if ( testSevereVM.priceindex > mostSevereVM.priceindex ) {
                             mostSevereVM = testSevereVM;
                         }
+
+                        totalRadius = ( totalRadius < 25 ? totalRadius + 1 : totalRadius );
                     }
+
+                    lap.chart_layer2_context.strokeStyle = '#595454';
+                    lap.chart_layer2_context.lineWidth = 3;
+                    lap.chart_layer2_context.beginPath();
+                    lap.chart_layer2_context.arc ( mostSevereVM.x + 2, mostSevereVM.y + 2, totalRadius, 0, 2 * Math.PI, false );
+                    lap.chart_layer2_context.stroke ( );
+
+                    lap.chart_layer2_context.strokeStyle = mostSevereVM.color;
+                    lap.chart_layer2_context.beginPath();
+                    lap.chart_layer2_context.arc ( mostSevereVM.x, mostSevereVM.y, totalRadius, 0, 2 * Math.PI, false );
+                    lap.chart_layer2_context.stroke ( );
                 }
-
-                lap.chart_layer2_context.strokeStyle = '#595454';
-                lap.chart_layer2_context.lineWidth = 3;
-                lap.chart_layer2_context.beginPath();
-                lap.chart_layer2_context.arc ( mostSevereVM.x + 2, mostSevereVM.y + 2, totalRadius, 0, 2 * Math.PI, false );
-                lap.chart_layer2_context.stroke ( );
-
-                lap.chart_layer2_context.strokeStyle = mostSevereVM.color;
-                lap.chart_layer2_context.beginPath();
-                lap.chart_layer2_context.arc ( mostSevereVM.x, mostSevereVM.y, totalRadius, 0, 2 * Math.PI, false );
-                lap.chart_layer2_context.stroke ( );
             }
         }
     }
@@ -571,8 +565,8 @@ function buildDataTable ( chartData ) {
 function onSpanMouseEvent ( event, span ) {
 
     var coords, spanDataText, spanDataObj,
-        vmPoint, vmx, vmy, vmRadius, vmColor,
-        hostpi, dspi;
+            vmPoint, vmx, vmy, vmRadius, vmColor,
+            hostpi, dspi;
 
     if ( event.type === 'mouseover' ) {
 
@@ -960,6 +954,7 @@ function findVMs ( ) {
     <input id="xslider" type="range" min="75" max="250" value="75" width="10" style="position: absolute; top: 17px; left: 260px; width: 175px;" onchange="onSliderChange ( this )" />
     <input id="yslider" type="range" max="500" value="55" width="10" style="position: absolute; top: 18px; left: 35px; height: 511px; -webkit-appearance: slider-vertical" onchange="onSliderChange ( )" />
 </div>
+
 
 <div id="rawData" class="rawDataStyle" style="top: 700px"></div>
 
