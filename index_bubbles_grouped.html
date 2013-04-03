@@ -34,7 +34,7 @@ jQuery ( document ).ready ( function ( ) {
         chart_selectorbox : jQuery ( '#chart_selectorbox' ).get ( 0 ),
         greenzone : [ 1.2345, 6.25, 25 ],
         powVals : [ ],
-        colorVals : [ '#0000FF', '#00FF00', '#FFFF00', '#FF0000' ],
+        colorVals : [ '#3399ff', '#00FF00', '#FFFC17', '#FF0000' ],
         colorValsPastel : [ '#d0e4fd', '#c3ffc0', '#fffd93', '#ffc0c0' ],
         axisLength : 500,
         gridSegments : 10,
@@ -373,10 +373,12 @@ function organizeData ( vmArray ) {
 
 function plotVMSectors ( populatedRanges ) {
 
-    var i, each,
+    var i, j, each,
         xPos, yPos,
-        split, vmsArray, counters,
-        dim = lap.axisLength / lap.gridSegments;
+        split, vmsArray,
+        vmsBySeverity, currentSeverityVMs,
+        testSevereVM, mostSevereVM,
+        totalRadius;
 
     for ( each in populatedRanges ) {
 
@@ -385,44 +387,57 @@ function plotVMSectors ( populatedRanges ) {
             split = each.split ( '_' );
             xPos = Number ( split [ 0 ] );
             yPos = Number ( split [ 1 ] );
+            totalRadius = 2;
 
             vmsArray = populatedRanges [ each ];
 
-            counters = [ 0, 0, 0, 0 ];
+            vmsBySeverity = [ [ ], [ ], [ ], [ ] ];
             for ( i = 0; i < vmsArray.length; i++ ) {
 
                 if ( vmsArray [ i ].color === lap.colorVals [ 0 ] ) {
-                    counters [ 0 ] = counters [ 0 ] + 1;
+                    vmsBySeverity [ 0 ].push ( vmsArray [ i ] );
                 }
                 else if ( vmsArray [ i ].color === lap.colorVals [ 1 ] ) {
-                    counters [ 1 ] = counters [ 1 ] + 1;
+                    vmsBySeverity [ 1 ].push ( vmsArray [ i ] );
                 }
                 else if ( vmsArray [ i ].color === lap.colorVals [ 2 ] ) {
-                    counters [ 2 ] = counters [ 2 ] + 1;
+                    vmsBySeverity [ 2 ].push ( vmsArray [ i ] );
                 }
                 else {
-                    counters [ 3 ] = counters [ 3 ] + 1;
+                    vmsBySeverity [ 3 ].push ( vmsArray [ i ] );
                 }
+
+                totalRadius = ( totalRadius < 25 ? totalRadius + 1 : totalRadius );
             }
 
-            lap.chart_layer2_context.fillStyle = lap.colorValsPastel [ 0 ];
-            lap.chart_layer2_context.fillRect ( xPos + 2, ( yPos - 4 ) - ( dim * 0.22 ), dim - 4, dim * 0.25 );
+            for ( i = 0; i < vmsBySeverity.length; i++ ) {
 
-            lap.chart_layer2_context.fillStyle = lap.colorValsPastel [ 1 ];
-            lap.chart_layer2_context.fillRect ( xPos + 2, ( yPos - 4 ) - ( dim * 0.44 ), dim - 4, dim * 0.25 );
+                if ( vmsBySeverity [ i ].length > 0 ) {
 
-            lap.chart_layer2_context.fillStyle = lap.colorValsPastel [ 2 ];
-            lap.chart_layer2_context.fillRect ( xPos + 2, ( yPos - 4 ) - ( dim * 0.66 ), dim - 4, dim * 0.25 );
+                    currentSeverityVMs = vmsBySeverity [ i ];
+                    mostSevereVM = currentSeverityVMs [ 0 ];
 
-            lap.chart_layer2_context.fillStyle = lap.colorValsPastel [ 3 ];
-            lap.chart_layer2_context.fillRect ( xPos + 2, ( yPos - 4 ) - ( dim * 0.88 ), dim - 4, dim * 0.25 );
+                    for ( j = 0; j < currentSeverityVMs.length; j++ ) {
 
-            lap.chart_layer2_context.font = 'bold 10px sans-serif';
-            lap.chart_layer2_context.fillStyle = '#000000';
-            lap.chart_layer2_context.fillText ( counters [ 0 ].toString ( ), xPos + 4, yPos - 4 );
-            lap.chart_layer2_context.fillText ( counters [ 1 ].toString ( ), xPos + 4, yPos - 15 );
-            lap.chart_layer2_context.fillText ( counters [ 2 ].toString ( ), xPos + 4, yPos - 26 );
-            lap.chart_layer2_context.fillText ( counters [ 3 ].toString ( ), xPos + 4, yPos - 38 );
+                        testSevereVM = currentSeverityVMs [ j ];
+
+                        if ( testSevereVM.priceindex > mostSevereVM.priceindex ) {
+                            mostSevereVM = testSevereVM;
+                        }
+                    }
+                }
+
+                lap.chart_layer2_context.strokeStyle = '#595454';
+                lap.chart_layer2_context.lineWidth = 3;
+                lap.chart_layer2_context.beginPath();
+                lap.chart_layer2_context.arc ( mostSevereVM.x + 2, mostSevereVM.y + 2, totalRadius, 0, 2 * Math.PI, false );
+                lap.chart_layer2_context.stroke ( );
+
+                lap.chart_layer2_context.strokeStyle = mostSevereVM.color;
+                lap.chart_layer2_context.beginPath();
+                lap.chart_layer2_context.arc ( mostSevereVM.x, mostSevereVM.y, totalRadius, 0, 2 * Math.PI, false );
+                lap.chart_layer2_context.stroke ( );
+            }
         }
     }
 }
@@ -554,8 +569,8 @@ function buildDataTable ( chartData ) {
 function onSpanMouseEvent ( event, span ) {
 
     var coords, spanDataText, spanDataObj,
-        vmPoint, vmx, vmy, vmRadius, vmColor,
-        hostpi, dspi;
+            vmPoint, vmx, vmy, vmRadius, vmColor,
+            hostpi, dspi;
 
     if ( event.type === 'mouseover' ) {
 
@@ -609,12 +624,12 @@ function onSpanMouseEvent ( event, span ) {
 function createRelatedDataDialog ( span ) {
 
     var ajaxCallCommandNotifications, ajaxCallCommandAuditLog,
-        notificationsURL, auditLogURL, spanDataText, spanDataObj,
-        xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
-        ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
-        uuid,
-        notificationsBody = jQuery ( '#modalContentBodyNotifications'),
-        auditLogBody = jQuery ( '#modalContentBodyAuditLog' );
+            notificationsURL, auditLogURL, spanDataText, spanDataObj,
+            xpos = ( jQuery ( window ).width ( ) * 0.5 ) - 200,
+            ypos = ( jQuery ( window ).height ( ) * 0.5 ) - 250,
+            uuid,
+            notificationsBody = jQuery ( '#modalContentBodyNotifications'),
+            auditLogBody = jQuery ( '#modalContentBodyAuditLog' );
 
     notificationsBody.css ( { 'display' : 'inline' } );
     auditLogBody.css ( { 'display' : 'none' } );
@@ -666,10 +681,10 @@ function onRelatedDataReturn ( dataObj ) {
 function populateModalContent ( elements, whichCall ) {
 
     var i, item,
-        event, time, severity,
-        timeElement, actionnameElement, categoryElement, usernameElement,
-        category,
-        divBGColor, divHTML = "";
+            event, time, severity,
+            timeElement, actionnameElement, categoryElement, usernameElement,
+            category,
+            divBGColor, divHTML = "";
 
     if ( whichCall === 'notifications' ) {
 
@@ -798,7 +813,7 @@ function onControlClick ( control ) {
         else if ( control.innerText === 'Hide OOZ Set' ) {
 
             var xslider = document.getElementById ( 'xslider' ),
-                yslider = document.getElementById ( 'yslider' );
+                    yslider = document.getElementById ( 'yslider' );
 
             xslider.value = 75;
             yslider.value = 130;
@@ -867,8 +882,8 @@ function onSelectorBoxMouseEvent ( ) {
 function drawSelectorRect ( ) {
 
     var top = 70, left = 110,
-        width = event.pageX - lap.selectorMouseDownPoint.xPos,
-        height =  event.pageY - lap.selectorMouseDownPoint.yPos;
+            width = event.pageX - lap.selectorMouseDownPoint.xPos,
+            height =  event.pageY - lap.selectorMouseDownPoint.yPos;
 
     clearContext ( lap.chart_selectorbox_context );
 
@@ -881,8 +896,8 @@ function drawSelectorRect ( ) {
 function findVMs ( ) {
 
     var i, vmObj,
-        top = 45, left = 10,
-        chartData = [ ];
+            top = 45, left = 10,
+            chartData = [ ];
 
     for ( i = 0; i < lap.vmAndHostAndDatastoreInfo.length; i++ ) {
         vmObj = lap.vmAndHostAndDatastoreInfo [ i ];
