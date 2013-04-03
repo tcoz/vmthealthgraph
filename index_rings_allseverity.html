@@ -798,12 +798,12 @@ function onControlClick ( control ) {
     }
     else if ( control.id === 'btnToggleGreenzoneSet' ) {
 
-        if ( control.innerText === 'Show OOZ Set' ) {
+        if ( control.innerText === 'Show GZ Set' ) {
 
             jQuery ( '#greenzoneset' ).css ( { 'display' : 'inline' } );
-            control.innerText = 'Hide OOZ Set';
+            control.innerText = 'Hide GZ Set';
         }
-        else if ( control.innerText === 'Hide OOZ Set' ) {
+        else if ( control.innerText === 'Hide GZ Set' ) {
 
             var xslider = document.getElementById ( 'xslider' ),
                     yslider = document.getElementById ( 'yslider' );
@@ -812,7 +812,7 @@ function onControlClick ( control ) {
             yslider.value = 130;
 
             jQuery ( '#greenzoneset' ).css ( { 'display' : 'none' } );
-            control.innerText = 'Show OOZ Set';
+            control.innerText = 'Show GZ Set';
 
             drawDefaultGreenzone ( );
         }
