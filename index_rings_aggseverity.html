@@ -39,7 +39,7 @@ jQuery ( document ).ready ( function ( ) {
         colorVals : [ '#3399ff', '#00FF00', '#FFFC17', '#FF0000' ],
         colorValsPastel : [ '#d0e4fd', '#c3ffc0', '#fffd93', '#ffc0c0' ],
         axisLength : 500,
-        gridSegments : 10,
+        axisSegments : 10,
         vmInfo : [ ],
         vmAndHostInfo : [ ],
         vmAndHostAndDatastoreInfo : [ ],
@@ -300,17 +300,17 @@ function organizeData ( vmArray ) {
         xRange, yRange,
         populatedRanges = { };
 
-    for ( i = 0; i < ( lap.gridSegments ); i++ ) {
+    for ( i = 0; i < ( lap.axisSegments ); i++ ) {
 
-        xPointMin = lap.originPoint.x + ( i * ( lap.axisLength / lap.gridSegments ) );
-        xPointMax = xPointMin + ( lap.axisLength / lap.gridSegments );
+        xPointMin = lap.originPoint.x + ( i * ( lap.axisLength / lap.axisSegments ) );
+        xPointMax = xPointMin + ( lap.axisLength / lap.axisSegments );
         xRange = xPointMin.toString ( ) + '_' + xPointMax.toString ( );
 
         yPoints = [ ];
-        for ( j = 0; j < lap.gridSegments; j++ ) {
+        for ( j = 0; j < lap.axisSegments; j++ ) {
 
-            yPointMin = lap.originPoint.y - ( j * ( lap.axisLength / lap.gridSegments ) );
-            yPointMax = yPointMin - ( lap.axisLength / lap.gridSegments );
+            yPointMin = lap.originPoint.y - ( j * ( lap.axisLength / lap.axisSegments ) );
+            yPointMax = yPointMin - ( lap.axisLength / lap.axisSegments );
             yRange = yPointMin.toString ( ) + '_' + yPointMax.toString ( );
 
             yPoints.push ( { 'range' : yRange, 'vms' : [ ] } );
@@ -339,7 +339,7 @@ function organizeData ( vmArray ) {
 
                         if ( vmObj.y <= Number ( split [ 0 ] ) && vmObj.y > Number ( split [ 1 ] ) ) {
 
-                            xPoints [ xPropName ] [ j ].vms.push ( vmObj );
+                            yArray [ j ].vms.push ( vmObj );
                             break;
                         }
                     }
@@ -354,14 +354,15 @@ function organizeData ( vmArray ) {
 
             split = xPropName.split ( '_' );
             xRange = split [ 0 ];
+            yArray = xPoints [ xPropName ];
 
-            for ( i = 0; i < xPoints [ xPropName ].length; i++ ) {
+            for ( i = 0; i < yArray.length; i++ ) {
 
-                vmArray = xPoints [ xPropName ] [ i ].vms;
+                vmArray = yArray [ i ].vms;
 
                 if ( vmArray.length > 0 ) {
 
-                    split = xPoints [ xPropName ] [ i ].range.split ( '_' );
+                    split = yArray [ i ].range.split ( '_' );
                     yRange = split [ 0 ];
 
                     populatedRanges [ ( xRange + '_' + yRange ) ] = vmArray;
@@ -389,7 +390,7 @@ function plotVMSectors ( populatedRanges ) {
             split = each.split ( '_' );
             xPos = Number ( split [ 0 ] );
             yPos = Number ( split [ 1 ] );
-            totalRadius = 2;
+            totalRadius = 4;
 
             vmsArray = populatedRanges [ each ];
 
@@ -409,7 +410,7 @@ function plotVMSectors ( populatedRanges ) {
                     vmsBySeverity [ 3 ].push ( vmsArray [ i ] );
                 }
 
-                totalRadius = ( totalRadius < 25 ? totalRadius + 1 : totalRadius );
+                totalRadius = ( ( totalRadius * 0.5 ) < 25 ? totalRadius + 0.5 : totalRadius * 0.5 );
             }
 
             for ( i = 0; i < vmsBySeverity.length; i++ ) {
